@@ -29,7 +29,7 @@ export default function TeamSection() {
                     <img
                       src={member.avatarUrl}
                       alt={member.name}
-                      className="h-full w-full object-cover filter grayscale contrast-105 transition-all duration-700 group-hover:grayscale-0 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                     <span className="absolute top-2.5 right-2.5 rounded-xs bg-[#191817] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#FAF7F2]">
                       {member.highlightTag}

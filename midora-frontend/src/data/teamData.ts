@@ -37,7 +37,7 @@ export const teamMembers: TeamMember[] = [
     email: "manhmam2010@gmail.com",
     phone: "0815803246",
     bio: "Định hình tầm nhìn chiến lược sản phẩm B2B2C, quản trị đề án kinh doanh, kết nối các đối tác cửa hàng vintage và điều phối các vòng thi.",
-    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80",
+    avatarUrl: "/team/ThaiThiMaiAnh.png",
     highlightTag: "Trưởng nhóm",
   },
   {
@@ -73,7 +73,7 @@ export const teamMembers: TeamMember[] = [
     email: "Trankhanhdung310@gmail.com",
     phone: "0354246635",
     bio: "Nghiên cứu trải nghiệm người dùng, thiết kế giao diện chuẩn Modern SaaS, chuẩn hóa quy trình tiếp nhận thông số quần áo từ các shop thời trang vintage.",
-    avatarUrl: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80",
+    avatarUrl: "/team/TranKhanhDung.jpg",
     highlightTag: "UI/UX & Ops",
   },
 ];
