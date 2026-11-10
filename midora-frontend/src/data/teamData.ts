@@ -68,7 +68,7 @@ export const teamMembers: TeamMember[] = [
     id: "member-4",
     name: "Trần Khánh Dung",
     studentId: "DS200036",
-    major: "Đang cập nhật",
+    major: "Công nghệ truyền thông",
     role: "UI/UX & Operations Lead",
     email: "Trankhanhdung310@gmail.com",
     phone: "0354246635",
