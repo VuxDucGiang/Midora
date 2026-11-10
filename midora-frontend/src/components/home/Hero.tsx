@@ -1,89 +1,58 @@
 "use client";
 
 import React from "react";
-import { ArrowRight, Sparkles, FileText, CheckCircle } from "lucide-react";
-import TryOnMockupWidget from "./TryOnMockupWidget";
-import { contestInfo } from "@/data/teamData";
+import { ArrowRight } from "lucide-react";
 import { proposalSummary } from "@/data/proposalData";
 
 export default function Hero() {
   return (
-    <section className="relative w-full bg-[#ffffff] pt-12 pb-20 sm:pt-20 sm:pb-28 border-b border-[#e5e7eb]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          {/* Left Column: 7 Cols */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Contest & Track Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#f8f9fa] px-3.5 py-1 text-xs font-medium text-[#374151] border border-[#e5e7eb]">
-              <Sparkles className="h-3.5 w-3.5 text-[#111111]" />
-              <span className="font-semibold text-[#111111]">{contestInfo.season}</span>
-              <span>•</span>
-              <span>{contestInfo.name}</span>
+    <section className="relative w-full overflow-hidden bg-[#FAF7F2] py-20 sm:py-28 border-b border-[#E5DFD5]">
+      <div className="absolute inset-0 vintage-stitch opacity-35 pointer-events-none" />
+
+      <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+        <p className="font-mono text-xs tracking-[0.22em] text-[#A25B26] font-semibold">
+          SEE IT. TRY IT. LOVE IT.
+        </p>
+
+        <h1 className="mt-4 font-serif text-4xl sm:text-5xl lg:text-6xl font-normal tracking-[-0.02em] text-[#191817] leading-[1.15]">
+          Mỗi món đồ vintage là một câu chuyện độc bản.{" "}
+          <span className="italic text-[#57534E] block sm:inline">
+            Hãy để nó vừa vặn với bạn.
+          </span>
+        </h1>
+
+        <p className="mt-6 text-base sm:text-lg text-[#57534E] max-w-2xl mx-auto font-light leading-relaxed">
+          MIDORA là nền tảng thử đồ ảo 3D cá nhân hóa cho thời trang secondhand và vintage, kết hợp số đo cơ thể thực tế để xóa bỏ rào cản mua sắm trực tuyến.
+        </p>
+
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
+          <a
+            href="#de-an"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xs bg-[#191817] px-6 text-xs font-medium tracking-wider uppercase text-[#FAF7F2] transition-all hover:bg-[#2C3E55]"
+          >
+            Tìm hiểu Đề án
+            <ArrowRight className="h-3.5 w-3.5" />
+          </a>
+          <a
+            href="#doi-ngu"
+            className="inline-flex h-11 items-center justify-center rounded-xs border border-[#D3CBC0] bg-[#FFFFFF] px-6 text-xs font-medium tracking-wider uppercase text-[#191817] transition-all hover:bg-[#F4EFEA]"
+          >
+            Đội ngũ thực hiện
+          </a>
+        </div>
+
+        {/* Key Highlights */}
+        <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-[#E5DFD5]">
+          {proposalSummary.impactStats.map((stat, i) => (
+            <div key={i} className="text-center py-2">
+              <p className="font-serif text-2xl sm:text-3xl font-bold text-[#191817]">
+                {stat.value}
+              </p>
+              <p className="text-xs text-[#57534E] mt-1 font-medium">
+                {stat.label}
+              </p>
             </div>
-
-            {/* Display Headline (Cal Sans / Inter 600 with negative tracking) */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[54px] font-semibold tracking-[-1.5px] text-[#111111] leading-[1.1]">
-              SEE IT. TRY IT. LOVE IT. <br />
-              <span className="text-[#374151] font-normal">
-                Thời trang độc bản vừa vặn với vóc dáng của bạn.
-              </span>
-            </h1>
-
-            {/* Sub-headline description extracted from Proposal */}
-            <p className="text-base sm:text-lg leading-relaxed text-[#4b5563] max-w-2xl">
-              {proposalSummary.shortDesc}
-            </p>
-
-            {/* Action Buttons Row */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <a
-                href="#demo-tryon"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#111111] px-6 text-sm font-semibold text-[#ffffff] shadow-xs transition-colors hover:bg-[#242424]"
-              >
-                Trải nghiệm Demo Thử đồ
-                <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href="#de-an"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#e5e7eb] bg-[#ffffff] px-5 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#f8f9fa]"
-              >
-                <FileText className="h-4 w-4 text-[#6b7280]" />
-                Xem Thuyết minh Đề án
-              </a>
-            </div>
-
-            {/* Trust Highlights */}
-            <div className="pt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-[#6b7280]">
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4 text-[#10b981]" />
-                <span>Số đo độc bản từng chiếc áo</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4 text-[#10b981]" />
-                <span>Avatar 3D cá nhân hóa</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <CheckCircle className="h-4 w-4 text-[#10b981]" />
-                <span>Thúc đẩy thời trang bền vững</span>
-              </div>
-            </div>
-
-            {/* Impact Metric Strip */}
-            <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-[#e5e7eb]">
-              {proposalSummary.impactStats.map((stat, i) => (
-                <div key={i} className="rounded-lg bg-[#f5f5f5] p-3 border border-[#e5e7eb]/60">
-                  <p className="text-lg font-bold text-[#111111] tracking-tight">{stat.value}</p>
-                  <p className="text-xs font-semibold text-[#374151] mt-0.5">{stat.label}</p>
-                  <p className="text-[11px] text-[#6b7280] mt-0.5 line-clamp-1">{stat.note}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right Column: 5 Cols - Product UI Mockup Fragment */}
-          <div className="lg:col-span-5 flex justify-center">
-            <TryOnMockupWidget />
-          </div>
+          ))}
         </div>
       </div>
     </section>

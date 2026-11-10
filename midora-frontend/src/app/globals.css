@@ -1,61 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  /* Cal.com Design System Tokens from /.agent/design.md */
-  --canvas: #ffffff;
-  --primary: #111111;
-  --primary-active: #242424;
-  --primary-disabled: #e5e7eb;
-  --ink: #111111;
-  --body: #374151;
-  --muted: #6b7280;
-  --muted-soft: #898989;
-  --hairline: #e5e7eb;
-  --hairline-soft: #f3f4f6;
-  --surface-soft: #f8f9fa;
-  --surface-card: #f5f5f5;
-  --surface-strong: #e5e7eb;
-  --surface-dark: #101010;
-  --surface-dark-elevated: #1a1a1a;
-  --on-primary: #ffffff;
-  --on-dark: #ffffff;
-  --on-dark-soft: #a1a1aa;
-  --brand-accent: #3b82f6;
-  --badge-orange: #fb923c;
-  --badge-pink: #ec4899;
-  --badge-violet: #8b5cf6;
-  --badge-emerald: #34d399;
+  /* MIDORA Atelier - Archival Fashion Palette (from frontend-design) */
+  --canvas: #FAF7F2;
+  --surface: #FFFFFF;
+  --surface-warm: #F4EFEA;
+  --surface-tag: #EFE9E1;
+  --surface-dark: #141416;
+  --surface-dark-elevated: #1F1F23;
+  
+  --ink: #191817;
+  --ink-secondary: #57534E;
+  --ink-muted: #8E8A85;
+  --border-stitch: #E5DFD5;
+  --border-strong: #D3CBC0;
+
+  --accent-tobacco: #A25B26; /* Denim contrast thread */
+  --accent-indigo: #22384F;  /* Vintage selvedge denim */
+  --accent-sage: #2C523F;    /* Circular economy botanical */
+  --accent-cream: #FCFAF6;
 }
 
 @theme inline {
   --color-canvas: var(--canvas);
-  --color-primary: var(--primary);
-  --color-primary-active: var(--primary-active);
-  --color-primary-disabled: var(--primary-disabled);
-  --color-ink: var(--ink);
-  --color-body: var(--body);
-  --color-muted: var(--muted);
-  --color-muted-soft: var(--muted-soft);
-  --color-hairline: var(--hairline);
-  --color-hairline-soft: var(--hairline-soft);
-  --color-surface-soft: var(--surface-soft);
-  --color-surface-card: var(--surface-card);
-  --color-surface-strong: var(--surface-strong);
+  --color-surface: var(--surface);
+  --color-surface-warm: var(--surface-warm);
+  --color-surface-tag: var(--surface-tag);
   --color-surface-dark: var(--surface-dark);
   --color-surface-dark-elevated: var(--surface-dark-elevated);
-  --color-on-primary: var(--on-primary);
-  --color-on-dark: var(--on-dark);
-  --color-on-dark-soft: var(--on-dark-soft);
-  --color-brand-accent: var(--brand-accent);
-  --color-badge-orange: var(--badge-orange);
-  --color-badge-pink: var(--badge-pink);
-  --color-badge-violet: var(--badge-violet);
-  --color-badge-emerald: var(--badge-emerald);
+  
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-muted: var(--ink-muted);
+  --color-border-stitch: var(--border-stitch);
+  --color-border-strong: var(--border-strong);
+  
+  --color-tobacco: var(--accent-tobacco);
+  --color-indigo: var(--accent-indigo);
+  --color-sage: var(--accent-sage);
+  --color-cream: var(--accent-cream);
+
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
 }
 
 body {
   background-color: var(--canvas);
-  color: var(--body);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  color: var(--ink-secondary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle fabric grain effect for tactile feel */
+.vintage-stitch {
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Garment spec lines */
+.tailor-line {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--border-strong),
+    var(--border-strong) 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }

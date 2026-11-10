@@ -1,122 +1,82 @@
 "use client";
 
 import React from "react";
-import { Mail, Phone, GraduationCap, IdCard, CheckCircle2 } from "lucide-react";
-import { teamMembers, contestInfo } from "@/data/teamData";
+import { Mail, Phone, GraduationCap, IdCard } from "lucide-react";
+import { teamMembers } from "@/data/teamData";
 
 export default function TeamSection() {
   return (
-    <section id="doi-ngu" className="w-full bg-[#f8f9fa] py-24 border-b border-[#e5e7eb]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="max-w-3xl space-y-3">
-          <div className="inline-flex items-center rounded-full bg-[#ffffff] px-3.5 py-1 text-xs font-semibold text-[#111111] border border-[#e5e7eb] shadow-xs">
-            Phần 4: Đội Ngũ Thực Hiện Đề Án
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-semibold tracking-[-1px] text-[#111111]">
-            Các Thành viên Đội thi MIDORA
+    <section id="doi-ngu" className="w-full bg-[#FAF7F2] py-20 sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl">
+          <h2 className="font-serif text-3xl sm:text-4xl font-normal text-[#191817] leading-tight">
+            Thành Viên Đội Thi MIDORA
           </h2>
-          <p className="text-base text-[#4b5563]">
-            Sự kết hợp liên ngành giữa chuyên môn Kinh doanh Quốc tế, Kỹ thuật Phần mềm và Thiết kế Trải nghiệm 
-            đáp ứng hoàn hảo mục tiêu xây dựng nền tảng B2B2C cho thời trang vintage.
+          <p className="mt-2 text-sm text-[#57534E] font-light">
+            Đội ngũ thực hiện đề án tham gia cuộc thi.
           </p>
         </div>
 
-        {/* Team Members Grid (4 Members) */}
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {teamMembers.map((member) => (
             <div
               key={member.id}
-              className="flex flex-col justify-between rounded-xl bg-[#ffffff] p-6 border border-[#e5e7eb] shadow-xs hover:border-[#111111] transition-all duration-200"
+              className="group flex flex-col justify-between rounded-xs border border-[#E5DFD5] bg-[#FFFFFF] p-5 transition-all hover:border-[#191817] shadow-xs"
             >
               <div>
-                {/* Avatar & Role Tag */}
-                <div className="flex items-start justify-between">
-                  <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-[#111111]/10 bg-[#f5f5f5]">
-                    <img
-                      src={member.avatarUrl}
-                      alt={member.name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <span className="inline-flex items-center rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[11px] font-semibold text-[#111111] border border-[#e5e7eb]">
+                <div className="relative aspect-square w-full overflow-hidden rounded-xs border border-[#E5DFD5] bg-[#EFE9E1]">
+                  <img
+                    src={member.avatarUrl}
+                    alt={member.name}
+                    className="h-full w-full object-cover filter grayscale contrast-105 transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <span className="absolute top-2.5 right-2.5 rounded-xs bg-[#191817] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#FAF7F2]">
                     {member.highlightTag}
                   </span>
                 </div>
 
-                {/* Member Info */}
-                <div className="mt-4 space-y-1">
-                  <h3 className="text-base font-semibold text-[#111111] tracking-tight">
+                <div className="mt-4 space-y-0.5">
+                  <h3 className="font-serif text-base font-bold text-[#191817]">
                     {member.name}
                   </h3>
-                  <p className="text-xs font-medium text-[#2563eb]">
+                  <p className="font-mono text-xs text-[#A25B26] font-medium">
                     {member.role}
                   </p>
                 </div>
 
-                {/* Academic Metadata */}
-                <div className="mt-3 space-y-1.5 text-xs text-[#6b7280] pt-3 border-t border-[#e5e7eb]">
-                  <div className="flex items-center gap-1.5">
-                    <IdCard className="h-3.5 w-3.5 text-[#111111]" />
-                    <span>MSSV: <strong className="text-[#111111] font-semibold">{member.studentId}</strong></span>
+                <div className="mt-3 space-y-1 pt-3 border-t border-[#E5DFD5] text-xs text-[#57534E]">
+                  <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                    <IdCard className="h-3.5 w-3.5 text-[#191817]" />
+                    <span>MSSV: <strong className="text-[#191817]">{member.studentId}</strong></span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <GraduationCap className="h-3.5 w-3.5 text-[#111111]" />
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <GraduationCap className="h-3.5 w-3.5 text-[#191817]" />
                     <span className="truncate">{member.major}</span>
                   </div>
                 </div>
-
-                {/* Bio Description */}
-                <p className="mt-3 text-xs text-[#4b5563] leading-relaxed">
-                  {member.bio}
-                </p>
               </div>
 
-              {/* Contact Footer */}
-              <div className="mt-5 pt-4 border-t border-[#e5e7eb] space-y-1.5 text-xs">
+              <div className="mt-4 pt-3 border-t border-[#E5DFD5] space-y-1 text-xs">
                 <a
                   href={`mailto:${member.email}`}
-                  className="flex items-center gap-1.5 text-[#374151] hover:text-[#111111] truncate transition-colors"
+                  className="flex items-center gap-1.5 text-[#57534E] hover:text-[#191817] truncate font-mono text-[11px]"
                   title={member.email}
                 >
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-[#6b7280]" />
+                  <Mail className="h-3 w-3 shrink-0 text-[#8E8A85]" />
                   <span className="truncate">{member.email}</span>
                 </a>
                 {member.phone && (
                   <a
                     href={`tel:${member.phone}`}
-                    className="flex items-center gap-1.5 text-[#374151] hover:text-[#111111] transition-colors"
+                    className="flex items-center gap-1.5 text-[#57534E] hover:text-[#191817] font-mono text-[11px]"
                   >
-                    <Phone className="h-3.5 w-3.5 shrink-0 text-[#6b7280]" />
+                    <Phone className="h-3 w-3 shrink-0 text-[#8E8A85]" />
                     <span>{member.phone}</span>
                   </a>
                 )}
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Team Commitment Card */}
-        <div className="mt-12 rounded-xl bg-[#ffffff] p-6 border border-[#e5e7eb] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#10b981]/10 text-[#059669]">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-[#111111]">
-                Cam kết hoàn thành đề án và triển khai thực nghiệm
-              </p>
-              <p className="text-xs text-[#6b7280]">
-                Đội thi {contestInfo.projectCode} cam kết tuân thủ quy chế cuộc thi và sẵn sàng bước vào giai đoạn thử nghiệm (Pilot) với các đối tác.
-              </p>
-            </div>
-          </div>
-          <a
-            href="mailto:contact.midora.team@gmail.com"
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-[#111111] px-4 text-xs font-semibold text-[#ffffff] hover:bg-[#242424] transition-colors"
-          >
-            Liên hệ Ban Dự án
-          </a>
         </div>
       </div>
     </section>

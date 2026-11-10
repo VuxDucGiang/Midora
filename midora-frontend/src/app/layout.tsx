@@ -1,17 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
+
+const playfair = Playfair_Display({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600"],
-  variable: "--font-inter",
+  variable: "--font-sans",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "MIDORA – See It. Try It. Love It. | Nền tảng thử đồ ảo thời trang Vintage",
-  description: "MIDORA - Nền tảng thử đồ ảo cá nhân hóa dành riêng cho thị trường thời trang secondhand và vintage với avatar 3D theo số đo cơ thể thực tế.",
+  title: "MIDORA – The Digital Atelier for Vintage & Secondhand Fashion",
+  description: "MIDORA – Nền tảng thử đồ ảo cá nhân hóa dành riêng cho thị trường thời trang vintage và secondhand độc bản với avatar 3D và công nghệ so khớp số đo centimet thực tế.",
 };
 
 export default function RootLayout({
@@ -20,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans bg-[#ffffff] text-[#374151]">
+    <html lang="vi" className={`${playfair.variable} ${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col font-sans bg-[#FAF7F2] text-[#57534E]">
         {children}
       </body>
     </html>
