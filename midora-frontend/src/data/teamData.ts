@@ -49,7 +49,7 @@ export const teamMembers: TeamMember[] = [
     email: "qtrunghzz05@gmail.com",
     phone: "0876515566",
     bio: "Thiết kế kiến trúc hệ thống công nghệ (Next.js 15, Spring Boot 3, MySQL), xây dựng thuật toán so khớp số đo (Sizing Engine) và tích hợp Web 3D Avatar Try-On.",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+    avatarUrl: "/team/VuDucGiang.jpg",
     highlightTag: "Tech Lead",
   },
   {
@@ -61,7 +61,7 @@ export const teamMembers: TeamMember[] = [
     email: "quangkhanh1606@gmail.com",
     phone: "0788007142",
     bio: "Phụ trách chiến lược truyền thông thời trang bền vững (Circular Fashion), nghiên cứu phân khúc khách hàng mục tiêu Gen Z và kế hoạch tăng trưởng người dùng.",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80",
+    avatarUrl: "/team/DuongQuangKhanh.JPG",
     highlightTag: "Marketing & Growth",
   },
   {
