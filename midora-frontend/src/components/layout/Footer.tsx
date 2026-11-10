@@ -22,8 +22,8 @@ export default function Footer() {
             <a href="#demo-tryon" className="hover:text-[#FAF7F2] transition-colors">
               Cách hoạt động
             </a>
-            <a href="#lo-trinh" className="hover:text-[#FAF7F2] transition-colors">
-              Lộ trình
+            <a href="#tam-nhin" className="hover:text-[#FAF7F2] transition-colors">
+              Tầm nhìn
             </a>
             <a href="#doi-ngu" className="hover:text-[#FAF7F2] transition-colors">
               Đội ngũ

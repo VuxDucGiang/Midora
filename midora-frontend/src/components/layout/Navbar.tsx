@@ -10,7 +10,7 @@ export default function Navbar() {
   const navItems = [
     { label: "Đề án", href: "#de-an" },
     { label: "Cách hoạt động", href: "#demo-tryon" },
-    { label: "Lộ trình", href: "#lo-trinh" },
+    { label: "Tầm nhìn", href: "#tam-nhin" },
     { label: "Đội ngũ", href: "#doi-ngu" },
   ];
 

@@ -6,6 +6,7 @@ import ProposalSection from "@/components/home/ProposalSection";
 import InteractiveDemoSection from "@/components/home/InteractiveDemoSection";
 import ContestRoadmapSection from "@/components/home/ContestRoadmapSection";
 import TeamSection from "@/components/home/TeamSection";
+import ContactSection from "@/components/home/ContactSection";
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
         <InteractiveDemoSection />
         <ContestRoadmapSection />
         <TeamSection />
+        <ContactSection />
       </main>
 
       <Footer />
