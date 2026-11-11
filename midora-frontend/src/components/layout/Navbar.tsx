@@ -4,14 +4,19 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-export default function Navbar() {
+interface NavbarProps {
+  authSlot?: React.ReactNode;
+  mobileAuthSlot?: React.ReactNode;
+}
+
+export default function Navbar({ authSlot, mobileAuthSlot }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { label: "Đề án", href: "#de-an" },
-    { label: "Cách hoạt động", href: "#demo-tryon" },
-    { label: "Tầm nhìn", href: "#tam-nhin" },
-    { label: "Đội ngũ", href: "#doi-ngu" },
+    { label: "Đề án", href: "/#de-an" },
+    { label: "Cách hoạt động", href: "/#demo-tryon" },
+    { label: "Tầm nhìn", href: "/#tam-nhin" },
+    { label: "Đội ngũ", href: "/#doi-ngu" },
   ];
 
   return (
@@ -27,24 +32,26 @@ export default function Navbar() {
         {/* Balanced Single-Line Navigation */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#57534E]">
           {navItems.map((item) => (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               className="whitespace-nowrap py-1 text-[#57534E] hover:text-[#191817] transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-[1.5px] after:w-0 after:bg-[#191817] hover:after:w-full after:transition-all after:duration-200"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
-        {/* Single Clean CTA */}
+        {/* Auth / Action Controls */}
         <div className="hidden md:flex items-center shrink-0">
-          <a
-            href="#doi-ngu"
-            className="whitespace-nowrap inline-flex h-9 items-center justify-center rounded-xs bg-[#191817] px-5 text-xs font-medium tracking-wide text-[#FAF7F2] transition-colors hover:bg-[#2C3E55]"
-          >
-            Thành viên Đội thi
-          </a>
+          {authSlot ?? (
+            <Link
+              href="/login"
+              className="whitespace-nowrap inline-flex h-9 items-center justify-center rounded-xs bg-[#191817] px-5 text-xs font-medium tracking-wide text-[#FAF7F2] transition-colors hover:bg-[#2C3E55]"
+            >
+              Đăng nhập
+            </Link>
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -63,15 +70,24 @@ export default function Navbar() {
         <div className="border-b border-[#E5DFD5] bg-[#FAF7F2] px-6 py-5 md:hidden">
           <div className="flex flex-col space-y-3 text-base text-[#191817]">
             {navItems.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className="py-1.5 border-b border-[#E5DFD5]/60 font-medium hover:text-[#A25B26]"
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
+            {mobileAuthSlot ?? (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex h-9 items-center justify-center rounded-xs bg-[#191817] px-4 text-xs font-medium text-[#FAF7F2]"
+              >
+                Đăng nhập
+              </Link>
+            )}
           </div>
         </div>
       )}
