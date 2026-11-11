@@ -42,7 +42,7 @@ export default function NavbarAuthControls({
               logout();
               onNavigate?.();
             }}
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xs border border-[#D3CBC0] bg-[#FFFFFF] px-4 text-xs font-medium text-[#191817] hover:bg-[#F4EFEA] cursor-pointer"
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl border border-[#D3CBC0]/80 bg-white/80 px-4 text-xs font-medium text-[#191817] hover:bg-white cursor-pointer"
           >
             <LogOut className="h-3.5 w-3.5" />
             Đăng xuất
@@ -52,8 +52,8 @@ export default function NavbarAuthControls({
     }
 
     return (
-      <div className="flex items-center gap-2.5">
-        <div className="flex items-center gap-2 rounded-xs border border-[#E5DFD5] bg-[#FFFFFF] px-3 h-9">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-xl border border-[#E5DFD5]/80 bg-white/75 px-3 h-9">
           <UserIcon className="h-3.5 w-3.5 text-[#A25B26]" />
           <span className="max-w-[140px] truncate text-xs font-medium text-[#191817]">
             {user.fullName}
@@ -63,7 +63,7 @@ export default function NavbarAuthControls({
           type="button"
           onClick={logout}
           title="Đăng xuất"
-          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xs border border-[#D3CBC0] bg-[#FFFFFF] px-3 text-xs font-medium text-[#57534E] transition-colors hover:border-[#191817] hover:text-[#191817] cursor-pointer"
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#D3CBC0]/80 bg-white/75 px-3 text-xs font-medium text-[#57534E] transition-colors hover:border-[#191817] hover:bg-white hover:text-[#191817] cursor-pointer"
         >
           <LogOut className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">Đăng xuất</span>
@@ -81,7 +81,7 @@ export default function NavbarAuthControls({
             onNavigate?.();
             openAuthModal("login");
           }}
-          className="inline-flex h-9 items-center justify-center rounded-xs border border-[#D3CBC0] bg-[#FFFFFF] px-4 text-xs font-medium text-[#191817] hover:bg-[#F4EFEA] cursor-pointer"
+          className="inline-flex h-9 items-center justify-center rounded-xl border border-[#D3CBC0]/80 bg-white/80 px-4 text-xs font-medium text-[#191817] hover:bg-white cursor-pointer"
         >
           Đăng nhập
         </button>
@@ -91,7 +91,7 @@ export default function NavbarAuthControls({
             onNavigate?.();
             openAuthModal("register");
           }}
-          className="inline-flex h-9 items-center justify-center rounded-xs bg-[#191817] px-4 text-xs font-medium text-[#FAF7F2] hover:bg-[#22384F] cursor-pointer"
+          className="inline-flex h-9 items-center justify-center rounded-xl bg-[#191817] px-4 text-xs font-medium text-[#FAF7F2] hover:bg-[#22384F] cursor-pointer"
         >
           Đăng ký
         </button>
@@ -100,11 +100,11 @@ export default function NavbarAuthControls({
   }
 
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => openAuthModal("login")}
-        className="whitespace-nowrap inline-flex h-9 items-center justify-center gap-1.5 rounded-xs border border-[#D3CBC0] bg-[#FFFFFF] px-4 text-xs font-medium tracking-wide text-[#191817] transition-colors hover:bg-[#F4EFEA] cursor-pointer"
+        className="whitespace-nowrap inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#D3CBC0]/80 bg-white/75 px-4 text-xs font-medium tracking-wide text-[#191817] transition-colors hover:bg-white cursor-pointer"
       >
         <LogIn className="h-3.5 w-3.5" />
         Đăng nhập
@@ -112,7 +112,7 @@ export default function NavbarAuthControls({
       <button
         type="button"
         onClick={() => openAuthModal("register")}
-        className="whitespace-nowrap inline-flex h-9 items-center justify-center rounded-xs bg-[#191817] px-4 text-xs font-medium tracking-wide text-[#FAF7F2] transition-colors hover:bg-[#22384F] cursor-pointer"
+        className="whitespace-nowrap inline-flex h-9 items-center justify-center rounded-xl bg-[#191817] px-4 text-xs font-medium tracking-wide text-[#FAF7F2] transition-colors hover:bg-[#22384F] cursor-pointer"
       >
         Đăng ký
       </button>

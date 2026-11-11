@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { contestInfo } from "@/data/teamData";
 
 export default function Footer() {
@@ -16,18 +17,21 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap gap-6 text-xs font-medium text-[#A1A1AA]">
-            <a href="#de-an" className="hover:text-[#FAF7F2] transition-colors">
+            <Link href="/#de-an" className="hover:text-[#FAF7F2] transition-colors">
               Đề án
-            </a>
-            <a href="#demo-tryon" className="hover:text-[#FAF7F2] transition-colors">
+            </Link>
+            <Link href="/avatar" className="hover:text-[#FAF7F2] transition-colors">
+              Avatar 3D
+            </Link>
+            <Link href="/#demo-tryon" className="hover:text-[#FAF7F2] transition-colors">
               Cách hoạt động
-            </a>
-            <a href="#tam-nhin" className="hover:text-[#FAF7F2] transition-colors">
+            </Link>
+            <Link href="/#tam-nhin" className="hover:text-[#FAF7F2] transition-colors">
               Tầm nhìn
-            </a>
-            <a href="#doi-ngu" className="hover:text-[#FAF7F2] transition-colors">
+            </Link>
+            <Link href="/#doi-ngu" className="hover:text-[#FAF7F2] transition-colors">
               Đội ngũ
-            </a>
+            </Link>
           </div>
         </div>
 
