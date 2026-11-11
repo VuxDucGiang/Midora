@@ -5,6 +5,14 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { Camera, RotateCw, Ruler } from "lucide-react";
+import {
+  fetchAvatarManifest,
+  tryLoadGlbAvatarRig,
+} from "@/features/avatar/three/avatarLoader";
+import type {
+  AvatarManifest,
+  AvatarRigInstance,
+} from "@/features/avatar/three/avatarRigTypes";
 import { OrganicMannequinRig } from "@/features/avatar/three/OrganicMannequinBuilder";
 import type { ActiveBodyMetric, AvatarDraft } from "@/types/bodyProfile";
 
@@ -79,7 +87,12 @@ export default function Avatar3DCanvas({
   activeMetric,
 }: Avatar3DCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const rigRef = useRef<OrganicMannequinRig | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const rigRef = useRef<AvatarRigInstance | null>(null);
+  const manifestRef = useRef<AvatarManifest | null>(null);
+  const loadedModelUrlRef = useRef<string | null>(null);
+  const loadSeqRef = useRef(0);
   const controlsRef = useRef<OrbitControls | null>(null);
   const transitionGoalRef = useRef<CameraGoal | null>(null);
 
@@ -88,11 +101,16 @@ export default function Avatar3DCanvas({
   const [showAllRings, setShowAllRings] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [webglError, setWebglError] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(false);
 
   const activeMetricRef = useRef<ActiveBodyMetric>(activeMetric);
   const showAllRingsRef = useRef<boolean>(showAllRings);
   const autoRotateRef = useRef<boolean>(autoRotate);
-  const initialDraftRef = useRef<AvatarDraft>(draft);
+  const latestDraftRef = useRef<AvatarDraft>(draft);
+
+  useEffect(() => {
+    latestDraftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     activeMetricRef.current = activeMetric;
@@ -147,9 +165,12 @@ export default function Avatar3DCanvas({
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 25);
     const initialGoal = computeCameraGoal(
       "full",
-      initialDraftRef.current.heightCm
+      latestDraftRef.current.heightCm
     );
     camera.position.copy(initialGoal.position);
+
+    sceneRef.current = scene;
+    rendererRef.current = renderer;
 
     // Studio IBL environment
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -175,6 +196,8 @@ export default function Avatar3DCanvas({
     keyLight.shadow.camera.top = 2.4;
     keyLight.shadow.camera.bottom = -0.3;
     keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.normalBias = 0.015;
+    keyLight.shadow.radius = 2.5;
     scene.add(keyLight);
 
     const fillLight = new THREE.DirectionalLight(0xeef3f8, 0.55);
@@ -236,11 +259,48 @@ export default function Avatar3DCanvas({
 
     scene.add(stageGroup);
 
-    // Organic Mannequin Rig
-    const rig = new OrganicMannequinRig();
-    rig.update(initialDraftRef.current);
-    scene.add(rig.root);
-    rigRef.current = rig;
+    // Default Immediate Parametric Rig (upgrades seamlessly if MPFB2 GLB manifest is enabled)
+    const fallbackRig = new OrganicMannequinRig();
+    fallbackRig.update(latestDraftRef.current);
+    scene.add(fallbackRig.root);
+    rigRef.current = fallbackRig;
+
+    const loadAbort = new AbortController();
+    void (async () => {
+      const seq = ++loadSeqRef.current;
+      const manifest = await fetchAvatarManifest(loadAbort.signal);
+      if (loadAbort.signal.aborted || !manifest || seq !== loadSeqRef.current) return;
+      manifestRef.current = manifest;
+      if (!manifest.enabled) return;
+
+      const gender = latestDraftRef.current.avatarCustomizationParams.genderStyle;
+      const targetSpec = manifest.models[gender] ?? manifest.models.female;
+      if (!targetSpec?.url) return;
+
+      setIsModelLoading(true);
+      const glbRig = await tryLoadGlbAvatarRig({
+        renderer,
+        manifest,
+        genderStyle: gender,
+        signal: loadAbort.signal,
+      });
+      if (loadAbort.signal.aborted || seq !== loadSeqRef.current) {
+        glbRig?.dispose();
+        return;
+      }
+      setIsModelLoading(false);
+      if (!glbRig) return;
+
+      const previousRig = rigRef.current;
+      glbRig.update(latestDraftRef.current);
+      scene.add(glbRig.root);
+      rigRef.current = glbRig;
+      loadedModelUrlRef.current = targetSpec.url;
+      if (previousRig) {
+        scene.remove(previousRig.root);
+        previousRig.dispose();
+      }
+    })();
 
     // Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -295,12 +355,17 @@ export default function Avatar3DCanvas({
         }
       }
 
-      rig.animate(elapsed, activeMetricRef.current, showAllRingsRef.current);
+      rigRef.current?.animate(
+        elapsed,
+        activeMetricRef.current,
+        showAllRingsRef.current
+      );
       controls.update();
       renderer.render(scene, camera);
     });
 
     return () => {
+      loadAbort.abort();
       renderer.setAnimationLoop(null);
       timer.dispose();
       resizeObserver.disconnect();
@@ -308,8 +373,11 @@ export default function Avatar3DCanvas({
       controls.dispose();
       controlsRef.current = null;
 
-      rig.dispose();
+      rigRef.current?.dispose();
       rigRef.current = null;
+      loadedModelUrlRef.current = null;
+      sceneRef.current = null;
+      rendererRef.current = null;
 
       floorGeo.dispose();
       floorMat.dispose();
@@ -334,6 +402,53 @@ export default function Avatar3DCanvas({
       rigRef.current.update(draft);
     }
   }, [draft]);
+
+  const genderStyle = draft.avatarCustomizationParams.genderStyle;
+  useEffect(() => {
+    const manifest = manifestRef.current;
+    const scene = sceneRef.current;
+    const renderer = rendererRef.current;
+    if (!manifest?.enabled || !scene || !renderer) return;
+
+    const targetSpec = manifest.models[genderStyle] ?? manifest.models.female;
+    if (!targetSpec?.url || targetSpec.url === loadedModelUrlRef.current) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    const seq = ++loadSeqRef.current;
+    void (async () => {
+      await Promise.resolve();
+      if (abortController.signal.aborted || seq !== loadSeqRef.current) return;
+      setIsModelLoading(true);
+      const glbRig = await tryLoadGlbAvatarRig({
+        renderer,
+        manifest,
+        genderStyle,
+        signal: abortController.signal,
+      });
+      if (abortController.signal.aborted || seq !== loadSeqRef.current) {
+        glbRig?.dispose();
+        return;
+      }
+      setIsModelLoading(false);
+      if (!glbRig) return;
+
+      const previousRig = rigRef.current;
+      glbRig.update(latestDraftRef.current);
+      scene.add(glbRig.root);
+      rigRef.current = glbRig;
+      loadedModelUrlRef.current = targetSpec.url;
+      if (previousRig) {
+        scene.remove(previousRig.root);
+        previousRig.dispose();
+      }
+    })();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [genderStyle]);
 
   const handleSelectPreset = (preset: CameraPreset) => {
     setCameraPreset(preset);
@@ -364,6 +479,11 @@ export default function Avatar3DCanvas({
 
       {/* Top-Right Compact View Tools below Liquid Glass Navbar */}
       <div className="pointer-events-none absolute right-3 top-[78px] sm:right-6 sm:top-[84px] z-20 flex flex-col items-end gap-2">
+        {isModelLoading && (
+          <div className="pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full liquid-glass-subtle px-3 font-mono text-[10px] uppercase tracking-wider text-[#57534E]">
+            Đang nạp Avatar 3D...
+          </div>
+        )}
         <div className="pointer-events-auto flex items-center gap-1.5">
           <button
             type="button"
