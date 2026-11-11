@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "enabled": false,
+  "notes": "Set enabled=true after generating midora-avatar-female.glb and midora-avatar-male.glb via midora-frontend/scripts/mpfb2_generate_midora_avatar.py",
+  "models": {
+    "female": {
+      "url": "/models/midora-avatar-female.glb",
+      "neutralHeightCm": 163,
+      "neutralWeightKg": 54,
+      "neutralMeasurements": {
+        "chestCm": 86,
+        "waistCm": 67,
+        "hipsCm": 93,
+        "shoulderWidthCm": 38.5
+      },
+      "calibration": {
+        "chestRangeCm": [72, 118],
+        "waistRangeCm": [54, 108],
+        "hipsRangeCm": [78, 126],
+        "shoulderRangeCm": [33, 47]
+      },
+      "landmarksYRatio": {
+        "hips": 0.515,
+        "waist": 0.625,
+        "chest": 0.728,
+        "shoulder": 0.818
+      }
+    },
+    "male": {
+      "url": "/models/midora-avatar-male.glb",
+      "neutralHeightCm": 175,
+      "neutralWeightKg": 69,
+      "neutralMeasurements": {
+        "chestCm": 97,
+        "waistCm": 80,
+        "hipsCm": 96,
+        "shoulderWidthCm": 44.5
+      },
+      "calibration": {
+        "chestRangeCm": [82, 130],
+        "waistRangeCm": [65, 118],
+        "hipsRangeCm": [82, 122],
+        "shoulderRangeCm": [38, 54]
+      },
+      "landmarksYRatio": {
+        "hips": 0.51,
+        "waist": 0.618,
+        "chest": 0.735,
+        "shoulder": 0.822
+      }
+    },
+    "neutral": {
+      "url": "/models/midora-avatar-female.glb",
+      "neutralHeightCm": 168,
+      "neutralWeightKg": 60,
+      "neutralMeasurements": {
+        "chestCm": 90,
+        "waistCm": 72,
+        "hipsCm": 94,
+        "shoulderWidthCm": 41
+      },
+      "calibration": {
+        "chestRangeCm": [76, 122],
+        "waistRangeCm": [58, 112],
+        "hipsRangeCm": [80, 124],
+        "shoulderRangeCm": [35, 50]
+      },
+      "landmarksYRatio": {
+        "hips": 0.512,
+        "waist": 0.622,
+        "chest": 0.73,
+        "shoulder": 0.82
+      }
+    }
+  }
+}
+
