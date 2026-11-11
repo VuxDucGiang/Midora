@@ -1,46 +1,40 @@
 
 ---
 trigger: always_on
-description: Enforce code reuse, DRY principles and reusable React component design.
+description: Enforce code reuse, DRY principles, clean Spring Boot services, and reusable React component design.
 ---
 
 # Code Reusability Standards
 
 ## Before Writing Code
-- Search the codebase for existing implementations.
-- Reuse existing components, hooks, services and utilities.
+- Search both `midora-frontend` and `midora-backend` for existing implementations.
+- Reuse existing components, hooks, services, repositories, DTOs, mappers, and utilities.
 - Extend existing implementations when appropriate.
 - Do not create duplicate functionality.
 
-## React Components
+## Frontend: React Components & Hooks
 - Keep components focused on one responsibility.
-- Separate business logic from presentation.
-- Extract reusable UI patterns.
+- Separate business/API logic from presentation.
+- Extract reusable UI patterns into `src/components/`.
 - Use composition instead of excessive boolean props.
-- Avoid unnecessary abstractions.
-- Prefer explicit and strongly typed props.
+- Prefer explicit and strongly typed TypeScript props.
+- Extract reusable stateful logic into custom hooks; do not create hooks that merely wrap one trivial expression.
+- Feature-specific components must remain inside their feature module (`src/features/{feature}/`).
 
-## Shared Components
-A component belongs in shared components when:
-- It is used by multiple features.
-- Its responsibility is generic.
-- It does not depend on a specific business feature.
+## Backend: Spring Boot Services, DTOs & Mappers
+- Centralize domain calculations (such as 3D Fit Score calculation, garment measurement comparison, and 1-SKU availability checks) in dedicated `@Service` or domain helper classes — never duplicate business rules across multiple controllers or services.
+- Reuse standardized response wrappers (`ApiResponse<T>`, `PageResponse<T>`) and centralized exception handling (`GlobalExceptionHandler`).
+- Keep entity-to-DTO mapping logic in dedicated mapper methods/classes rather than duplicating field-by-field mapping across controllers and services.
+- Extract reusable query predicates or specifications in repositories rather than filtering large collections in memory.
 
-Feature-specific components must remain inside their feature module.
-
-## Hooks
-- Extract reusable stateful logic into custom hooks.
-- Do not create hooks that merely wrap one trivial expression.
-- Avoid duplicating the same state management logic.
-
-## Utilities
-- Keep pure functions in appropriate utility modules.
-- Do not duplicate formatting, validation or transformation logic.
-- Reuse existing constants.
+## Utilities & Constants
+- Keep pure functions in appropriate utility modules (`src/lib/` on frontend, `com.midora.common.util` on backend).
+- Do not duplicate formatting, measurement conversion, validation, or transformation logic.
+- Reuse existing enums and constants.
 
 ## Prohibited Practices
-- Copy-paste components with minor visual differences.
-- Multiple implementations of the same business rule.
-- Unnecessary wrapper components.
+- Copy-paste components or service methods with minor differences.
+- Multiple implementations of the same business rule (e.g., calculating Fit Score differently in frontend vs. backend).
+- Unnecessary wrapper components or pass-through classes.
 - Over-generalized components with dozens of props.
 - Premature abstractions.
