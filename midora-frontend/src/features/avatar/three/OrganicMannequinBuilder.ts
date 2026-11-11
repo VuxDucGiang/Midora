@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { MeasurementOverlayRig } from "@/features/avatar/three/MeasurementOverlayRig";
 import type {
   AvatarRigInstance,
@@ -8,6 +9,11 @@ import {
   computeAnthropometricFrame,
   type AnthropometricFrame,
 } from "@/features/avatar/three/bodyCalibration";
+import {
+  applySkinSubsurfaceRim,
+  createSkinDetailNormalTexture,
+  createSkinRoughnessTexture,
+} from "@/features/avatar/three/skinShading";
 import type {
   ActiveBodyMetric,
   AvatarDraft,
@@ -155,6 +161,7 @@ function createMicroSkinTexture(): THREE.DataTexture {
 function createSculptedHeadGeometry(): THREE.BufferGeometry {
   const geo = new THREE.SphereGeometry(0.1, 48, 36);
   const pos = geo.attributes.position as THREE.BufferAttribute;
+  const colors = new Float32Array(pos.count * 3);
 
   for (let i = 0; i < pos.count; i++) {
     const x0 = pos.getX(i);
@@ -235,9 +242,52 @@ function createSculptedHeadGeometry(): THREE.BufferGeometry {
         Math.exp(-Math.pow((nz + 0.1) / 0.14, 2));
     }
 
+    // Vertex-level skin tint: blush, lips, eye sockets, brow, ear warmth.
+    // This costs one extra color attribute and removes the "white egg" look
+    // without needing a face texture.
+    const faceMask = smoothstep(0.3, 0.7, nz);
+    const cheek =
+      Math.exp(-Math.pow((ny + 0.02) / 0.18, 2)) *
+      Math.exp(-Math.pow((Math.abs(nx) - 0.46) / 0.22, 2)) *
+      faceMask;
+    const lipBand =
+      Math.exp(-Math.pow(nx / 0.24, 2)) *
+      (Math.exp(-Math.pow((ny + 0.37) / 0.055, 2)) +
+        Math.exp(-Math.pow((ny + 0.48) / 0.055, 2)));
+    const socket =
+      Math.exp(-Math.pow((ny - 0.065) / 0.11, 2)) *
+      Math.exp(-Math.pow((Math.abs(nx) - 0.3) / 0.16, 2)) *
+      faceMask;
+    const browShade =
+      Math.exp(-Math.pow((ny - 0.2) / 0.09, 2)) *
+      Math.exp(-Math.pow(nx / 0.55, 2)) *
+      faceMask;
+    const earWarmth =
+      Math.abs(nx) > 0.72 && Math.abs(ny) < 0.24 && nz < 0.12 && nz > -0.35
+        ? 1
+        : 0;
+    const noseWarmth =
+      Math.exp(-Math.pow(nx / 0.16, 2)) *
+      Math.exp(-Math.pow((ny + 0.2) / 0.1, 2)) *
+      faceMask;
+
+    const cr =
+      1 + cheek * 0.05 + lipBand * 0.07 + earWarmth * 0.06 + noseWarmth * 0.03
+        - socket * 0.04 - browShade * 0.03;
+    const cg =
+      1 + cheek * 0.01 - lipBand * 0.02 + earWarmth * 0.01
+        - socket * 0.05 - browShade * 0.03;
+    const cb =
+      1 - cheek * 0.01 - lipBand * 0.01 - socket * 0.05 - browShade * 0.03;
+
+    colors[i * 3] = THREE.MathUtils.clamp(cr, 0.75, 1.15);
+    colors[i * 3 + 1] = THREE.MathUtils.clamp(cg, 0.75, 1.15);
+    colors[i * 3 + 2] = THREE.MathUtils.clamp(cb, 0.75, 1.15);
+
     pos.setXYZ(i, x, y, z);
   }
 
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
   return geo;
 }
@@ -279,34 +329,126 @@ function createSculptedFootGeometry(sideSign: 1 | -1): THREE.BufferGeometry {
   return geo;
 }
 
+function createFingerSegment(
+  length: number,
+  radius: number,
+  start: THREE.Vector3,
+  rotX: number,
+  rotZ: number
+): THREE.BufferGeometry {
+  const geo = new THREE.CapsuleGeometry(
+    radius,
+    Math.max(length - radius * 2, 0.004),
+    4,
+    10
+  );
+  geo.translate(0, -length * 0.5, 0);
+  const matrix = new THREE.Matrix4().makeRotationFromEuler(
+    new THREE.Euler(rotX, 0, rotZ, "XYZ")
+  );
+  matrix.setPosition(start);
+  geo.applyMatrix4(matrix);
+  return geo;
+}
+
+function createFingerTip(
+  radius: number,
+  at: THREE.Vector3
+): THREE.BufferGeometry {
+  const geo = new THREE.SphereGeometry(radius, 10, 8);
+  geo.translate(at.x, at.y, at.z);
+  return geo;
+}
+
+/**
+ * One merged hand mesh: palm slab + 4 articulated fingers + thumb.
+ * The whole hand is a single BufferGeometry (one draw call) so adding
+ * anatomical detail does not cost extra GPU state changes.
+ *
+ * Local frame: palm plane in YZ (thickness along X), fingers hang along -Y,
+ * thumb on the anterior (+Z) side — i.e. arms relaxed at the sides with
+ * palms facing the thighs.
+ */
 function createSculptedHandGroup(
   sideSign: 1 | -1,
   mat: THREE.Material
 ): THREE.Group {
-  const group = new THREE.Group();
+  const parts: THREE.BufferGeometry[] = [];
 
-  const palmGeo = new THREE.SphereGeometry(0.032, 20, 16);
+  // Palm: ~8cm wide, ~10cm long, ~3cm thick, tapering into the wrist.
+  const palmGeo = new THREE.SphereGeometry(0.05, 24, 18);
   const pPos = palmGeo.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < pPos.count; i++) {
-    const x = pPos.getX(i);
-    const y = pPos.getY(i);
-    const z = pPos.getZ(i);
-    const ny = y / 0.032;
-    const fingerTaper = ny < 0 ? 1 - 0.34 * smoothstep(0, -1, ny) : 0.84;
-    pPos.setXYZ(i, x * 0.36 * (ny < 0 ? 0.96 : 0.9), y * 2.15, z * 0.92 * fingerTaper);
+    const nx = pPos.getX(i) / 0.05;
+    const ny = pPos.getY(i) / 0.05;
+    const nz = pPos.getZ(i) / 0.05;
+    const wristTaper = ny < 0 ? 1 - 0.16 * smoothstep(0, -1, ny) : 1;
+    const knuckleFullness = 1 + 0.05 * smoothstep(0.15, 0.85, ny);
+    pPos.setXYZ(
+      i,
+      nx * 0.0145,
+      ny * 0.05,
+      nz * 0.039 * wristTaper * knuckleFullness
+    );
   }
   palmGeo.computeVertexNormals();
-  const palm = new THREE.Mesh(palmGeo, mat);
-  palm.castShadow = true;
-  group.add(palm);
+  parts.push(palmGeo);
 
-  const thumbGeo = new THREE.CapsuleGeometry(0.0085, 0.034, 6, 10);
-  const thumb = new THREE.Mesh(thumbGeo, mat);
-  thumb.castShadow = true;
-  thumb.position.set(sideSign * -0.004, 0.01, 0.025);
-  thumb.rotation.set(0.45, 0, sideSign * 0.24);
-  group.add(thumb);
+  const baseY = -0.043;
+  const fingers = [
+    { z: 0.026, len: 0.062, radius: 0.0086, curl: 0.1 },
+    { z: 0.009, len: 0.07, radius: 0.009, curl: 0.11 },
+    { z: -0.009, len: 0.065, radius: 0.0084, curl: 0.12 },
+    { z: -0.026, len: 0.052, radius: 0.0074, curl: 0.14 },
+  ];
 
+  for (const finger of fingers) {
+    const proximal = finger.len * 0.55;
+    const distal = finger.len * 0.45;
+    const a1 = -sideSign * finger.curl;
+    const a2 = a1 - sideSign * finger.curl * 1.6;
+
+    const p1 = new THREE.Vector3(0, baseY, finger.z);
+    const p2 = new THREE.Vector3(
+      p1.x + Math.sin(a1) * proximal,
+      p1.y - Math.cos(a1) * proximal,
+      p1.z
+    );
+    const p3 = new THREE.Vector3(
+      p2.x + Math.sin(a2) * distal,
+      p2.y - Math.cos(a2) * distal,
+      p2.z
+    );
+
+    parts.push(createFingerSegment(proximal, finger.radius, p1, 0, a1));
+    parts.push(
+      createFingerSegment(distal, finger.radius * 0.9, p2, 0, a2)
+    );
+    parts.push(createFingerTip(finger.radius * 0.88, p3));
+  }
+
+  // Thumb: anterior side, angled forward and slightly inward.
+  const thumbLen = 0.048;
+  const thumbRotX = -0.6;
+  const thumbRotZ = -sideSign * 0.15;
+  const thumbBase = new THREE.Vector3(0, 0.004, 0.03);
+  const thumbDir = new THREE.Vector3(0, -thumbLen, 0)
+    .applyEuler(new THREE.Euler(thumbRotX, 0, thumbRotZ, "XYZ"));
+  parts.push(
+    createFingerSegment(thumbLen, 0.0095, thumbBase, thumbRotX, thumbRotZ)
+  );
+  parts.push(
+    createFingerTip(0.0088, thumbBase.clone().add(thumbDir))
+  );
+
+  const merged = mergeGeometries(parts, false);
+  for (const part of parts) part.dispose();
+
+  const group = new THREE.Group();
+  const handMesh = new THREE.Mesh(merged, mat);
+  handMesh.castShadow = true;
+  handMesh.receiveShadow = true;
+  group.add(handMesh);
   return group;
 }
 
@@ -316,12 +458,15 @@ export class OrganicMannequinRig implements AvatarRigInstance {
   readonly breathPivot: THREE.Group;
 
   private readonly skinBumpTexture: THREE.DataTexture;
+  private readonly skinDetailNormal: THREE.DataTexture;
+  private readonly skinRoughnessTexture: THREE.DataTexture;
   private readonly skinMaterial: THREE.MeshPhysicalMaterial;
   private readonly torsoMaterial: THREE.MeshPhysicalMaterial;
   private readonly legMaterial: THREE.MeshPhysicalMaterial;
   private readonly jointMaterial: THREE.MeshPhysicalMaterial;
-  private readonly hairMaterial: THREE.MeshStandardMaterial;
-  private readonly hairCurtainMaterial: THREE.MeshStandardMaterial;
+  private readonly faceMaterial: THREE.MeshPhysicalMaterial;
+  private readonly hairMaterial: THREE.MeshPhysicalMaterial;
+  private readonly hairCurtainMaterial: THREE.MeshPhysicalMaterial;
 
   private readonly torsoGeometry: THREE.BufferGeometry;
   private readonly torsoColorAttr: THREE.BufferAttribute;
@@ -371,34 +516,65 @@ export class OrganicMannequinRig implements AvatarRigInstance {
     this.root.add(this.breathPivot);
 
     this.skinBumpTexture = createMicroSkinTexture();
+    this.skinDetailNormal = createSkinDetailNormalTexture();
+    this.skinDetailNormal.repeat.set(14, 14);
+    this.skinRoughnessTexture = createSkinRoughnessTexture();
+    this.skinRoughnessTexture.repeat.set(9, 9);
 
-    const makeSkinMat = (vertexColors = false) =>
-      new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color("#DFB99B"),
-        roughness: 0.52,
-        metalness: 0.02,
-        sheen: 0.26,
-        sheenRoughness: 0.72,
-        sheenColor: new THREE.Color("#FFE5D6"),
+    const makeSkinMat = (vertexColors = false) => {
+      const material = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color("#D9AE8C"),
+        roughness: 0.5,
+        metalness: 0.0,
+        sheen: 0.32,
+        sheenRoughness: 0.68,
+        sheenColor: new THREE.Color("#FFDCCB"),
+        clearcoat: 0.07,
+        clearcoatRoughness: 0.42,
+        specularIntensity: 0.5,
+        ior: 1.4,
+        normalMap: this.skinDetailNormal,
+        normalScale: new THREE.Vector2(0.25, 0.25),
+        roughnessMap: this.skinRoughnessTexture,
         bumpMap: this.skinBumpTexture,
-        bumpScale: 0.001,
+        bumpScale: 0.00025,
+        envMapIntensity: 0.9,
         vertexColors,
       });
+      // Warm grazing-angle bleed: the cheap stand-in for subsurface scattering.
+      applySkinSubsurfaceRim(material, { strength: 1 });
+      return material;
+    };
 
     this.skinMaterial = makeSkinMat(false);
     this.torsoMaterial = makeSkinMat(true);
     this.legMaterial = makeSkinMat(true);
     this.jointMaterial = makeSkinMat(false);
+    this.faceMaterial = makeSkinMat(true);
 
-    this.hairMaterial = new THREE.MeshStandardMaterial({
+    this.hairMaterial = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color("#291F1A"),
-      roughness: 0.74,
-      metalness: 0.05,
+      roughness: 0.52,
+      metalness: 0.0,
+      sheen: 0.55,
+      sheenRoughness: 0.5,
+      sheenColor: new THREE.Color("#6B4A33"),
+      specularIntensity: 0.7,
+      clearcoat: 0.12,
+      clearcoatRoughness: 0.35,
+      ior: 1.55,
     });
-    this.hairCurtainMaterial = new THREE.MeshStandardMaterial({
+    this.hairCurtainMaterial = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color("#291F1A"),
-      roughness: 0.74,
-      metalness: 0.05,
+      roughness: 0.54,
+      metalness: 0.0,
+      sheen: 0.55,
+      sheenRoughness: 0.52,
+      sheenColor: new THREE.Color("#6B4A33"),
+      specularIntensity: 0.65,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.4,
+      ior: 1.55,
       side: THREE.DoubleSide,
     });
 
@@ -464,7 +640,7 @@ export class OrganicMannequinRig implements AvatarRigInstance {
     this.breathPivot.add(this.neckMesh);
 
     this.headGroup = new THREE.Group();
-    this.headMesh = new THREE.Mesh(createSculptedHeadGeometry(), this.skinMaterial);
+    this.headMesh = new THREE.Mesh(createSculptedHeadGeometry(), this.faceMaterial);
     this.headMesh.castShadow = true;
     this.headMesh.receiveShadow = true;
     this.headGroup.add(this.headMesh);
@@ -564,18 +740,24 @@ export class OrganicMannequinRig implements AvatarRigInstance {
     this.legMaterial.color.set(skinTone);
     this.jointMaterial.color.set(skinTone).multiplyScalar(0.97);
 
-    const matRoughness = isLinen ? 0.88 : 0.52;
-    const matSheen = isLinen ? 0.12 : 0.26;
-    const bump = isLinen ? 0.0022 : 0.001;
+    const matRoughness = isLinen ? 0.9 : 0.55;
+    const matSheen = isLinen ? 0.12 : 0.32;
+    const bump = isLinen ? 0.0022 : 0.00025;
+    const detailScale = isLinen ? 0.12 : 0.25;
     for (const m of [
       this.skinMaterial,
       this.torsoMaterial,
       this.legMaterial,
       this.jointMaterial,
+      this.faceMaterial,
     ]) {
       m.roughness = matRoughness;
       m.sheen = matSheen;
       m.bumpScale = bump;
+      m.normalScale.set(detailScale, detailScale);
+      m.clearcoat = isLinen ? 0.02 : 0.07;
+      m.specularIntensity = isLinen ? 0.35 : 0.5;
+      m.envMapIntensity = isLinen ? 0.65 : 0.9;
     }
 
     (Object.keys(this.hairGroups) as HairStyle[]).forEach((style) => {
@@ -821,9 +1003,9 @@ export class OrganicMannequinRig implements AvatarRigInstance {
     const frame = this.lastFrame;
     const showApparel = !this.lastIsLinen && frame !== null;
     const baseCol = this.torsoMaterial.color;
-    const appMultR = THREE.MathUtils.clamp(STUDIO_APPAREL_COLOR.r / Math.max(baseCol.r, 0.02), 0.08, 1.8);
-    const appMultG = THREE.MathUtils.clamp(STUDIO_APPAREL_COLOR.g / Math.max(baseCol.g, 0.02), 0.08, 1.8);
-    const appMultB = THREE.MathUtils.clamp(STUDIO_APPAREL_COLOR.b / Math.max(baseCol.b, 0.02), 0.08, 1.8);
+    const appMultR = THREE.MathUtils.clamp(STUDIO_APPAREL_COLOR.r / Math.max(baseCol.r, 0.02), 0.02, 3.2);
+    const appMultG = THREE.MathUtils.clamp(STUDIO_APPAREL_COLOR.g / Math.max(baseCol.g, 0.02), 0.02, 3.2);
+    const appMultB = THREE.MathUtils.clamp(STUDIO_APPAREL_COLOR.b / Math.max(baseCol.b, 0.02), 0.02, 3.2);
 
     for (let r = 0; r <= TORSO_RINGS; r++) {
       const t = r / TORSO_RINGS;
@@ -971,6 +1153,8 @@ export class OrganicMannequinRig implements AvatarRigInstance {
   dispose(): void {
     this.overlay.dispose();
     this.skinBumpTexture.dispose();
+    this.skinDetailNormal.dispose();
+    this.skinRoughnessTexture.dispose();
 
     const geos = new Set<THREE.BufferGeometry>();
     const mats = new Set<THREE.Material>();

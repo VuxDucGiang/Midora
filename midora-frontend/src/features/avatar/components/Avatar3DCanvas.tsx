@@ -3,7 +3,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
+import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { Camera, RotateCw, Ruler } from "lucide-react";
 import {
   fetchAvatarManifest,
@@ -14,6 +18,10 @@ import type {
   AvatarRigInstance,
 } from "@/features/avatar/three/avatarRigTypes";
 import { OrganicMannequinRig } from "@/features/avatar/three/OrganicMannequinBuilder";
+import {
+  createRoomEnvironment,
+  loadStudioEnvironment,
+} from "@/features/avatar/three/studioEnvironment";
 import type { ActiveBodyMetric, AvatarDraft } from "@/types/bodyProfile";
 
 type CameraPreset = "full" | "upper" | "angle45" | "back";
@@ -148,9 +156,12 @@ export default function Avatar3DCanvas({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.06;
+    // AgX keeps skin highlights soft and hue-stable; ACES desaturated them.
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    renderer.toneMappingExposure = 1.45;
     renderer.shadowMap.enabled = true;
+    // three r187 removed PCFSoftShadowMap; PCF + shadow.radius gives the
+    // soft studio falloff we want on the floor.
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     renderer.domElement.style.width = "100%";
@@ -172,23 +183,43 @@ export default function Avatar3DCanvas({
     sceneRef.current = scene;
     rendererRef.current = renderer;
 
-    // Studio IBL environment
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const roomEnv = new RoomEnvironment();
-    const envTarget = pmremGenerator.fromScene(roomEnv, 0.04);
-    scene.environment = envTarget.texture;
-    scene.environmentIntensity = 0.44;
-    roomEnv.dispose();
-    pmremGenerator.dispose();
+    // Studio IBL: a procedural room lights the first frames, then the CC0
+    // Poly Haven HDRI (public/env/studio_small_09_1k.hdr) replaces it.
+    let envDispose: () => void = () => {};
+    let envLoadCancelled = false;
+
+    const fallbackEnv = createRoomEnvironment(renderer);
+    scene.environment = fallbackEnv.texture;
+    scene.environmentIntensity = fallbackEnv.intensity;
+    envDispose = fallbackEnv.dispose;
+
+    void (async () => {
+      try {
+        const studio = await loadStudioEnvironment(
+          renderer,
+          () => envLoadCancelled
+        );
+        if (envLoadCancelled) {
+          studio.dispose();
+          return;
+        }
+        scene.environment = studio.texture;
+        scene.environmentIntensity = studio.intensity;
+        fallbackEnv.dispose();
+        envDispose = studio.dispose;
+      } catch {
+        // Keep the procedural room environment when the HDRI is unavailable.
+      }
+    })();
 
     // Warm 3-Point Atelier Lighting with diagonal soft shadow behind mannequin
-    const hemiLight = new THREE.HemisphereLight(0xfffaf2, 0xd9cfc2, 0.55);
+    const hemiLight = new THREE.HemisphereLight(0xfffaf2, 0xd9cfc2, 0.21);
     scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff6ea, 1.48);
+    const keyLight = new THREE.DirectionalLight(0xfff4e6, 0.9);
     keyLight.position.set(-1.6, 2.6, 2.2);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.camera.near = 0.5;
     keyLight.shadow.camera.far = 8.5;
     keyLight.shadow.camera.left = -1.3;
@@ -197,14 +228,14 @@ export default function Avatar3DCanvas({
     keyLight.shadow.camera.bottom = -0.3;
     keyLight.shadow.bias = -0.0004;
     keyLight.shadow.normalBias = 0.015;
-    keyLight.shadow.radius = 2.5;
+    keyLight.shadow.radius = 3;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xeef3f8, 0.55);
+    const fillLight = new THREE.DirectionalLight(0xdfe9f5, 0.27);
     fillLight.position.set(2.0, 1.5, 1.8);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xfff0dd, 0.7);
+    const rimLight = new THREE.DirectionalLight(0xffd9b8, 0.5);
     rimLight.position.set(0.3, 2.2, -2.3);
     scene.add(rimLight);
 
@@ -302,6 +333,40 @@ export default function Avatar3DCanvas({
       }
     })();
 
+    // Post-processing: SOFT AO for creases + SMAA for clean shell edges.
+    // GTAO runs a depth/normal prepass, so it is desktop-only for now.
+    const composer = new EffectComposer(renderer);
+    composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    composer.setSize(width, height);
+    composer.addPass(new RenderPass(scene, camera));
+
+    const enableGtao = window.innerWidth >= 1024;
+    let gtaoPass: GTAOPass | null = null;
+    if (enableGtao) {
+      gtaoPass = new GTAOPass(scene, camera, width, height);
+      gtaoPass.blendIntensity = 0.7;
+      gtaoPass.updateGtaoMaterial({
+        radius: 0.24,
+        distanceExponent: 1.15,
+        thickness: 0.9,
+        scale: 1.0,
+        samples: 16,
+      });
+      gtaoPass.updatePdMaterial({
+        lumaPhi: 10,
+        depthPhi: 2,
+        normalPhi: 3,
+        radius: 4,
+        radiusExponent: 1,
+        samples: 16,
+      });
+      composer.addPass(gtaoPass);
+    }
+    const smaaPass = new SMAAPass();
+    const outputPass = new OutputPass();
+    composer.addPass(smaaPass);
+    composer.addPass(outputPass);
+
     // Orbit Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.copy(initialGoal.target);
@@ -330,6 +395,7 @@ export default function Avatar3DCanvas({
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
+        composer.setSize(w, h);
       }
     });
     resizeObserver.observe(container);
@@ -361,11 +427,12 @@ export default function Avatar3DCanvas({
         showAllRingsRef.current
       );
       controls.update();
-      renderer.render(scene, camera);
+      composer.render();
     });
 
     return () => {
       loadAbort.abort();
+      envLoadCancelled = true;
       renderer.setAnimationLoop(null);
       timer.dispose();
       resizeObserver.disconnect();
@@ -389,7 +456,11 @@ export default function Avatar3DCanvas({
       shadowMat.dispose();
       shadowTex.dispose();
 
-      envTarget.dispose();
+      gtaoPass?.dispose();
+      smaaPass.dispose();
+      outputPass.dispose();
+      composer.dispose();
+      envDispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);
