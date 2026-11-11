@@ -18,10 +18,12 @@ import type {
   GenderStyle,
 } from "@/types/bodyProfile";
 
+const DEFAULT_SINGLE_PROFILE_NAME = "Số đo cá nhân";
+
 function toDraft(profile: BodyProfileResponse): AvatarDraft {
   return {
     id: profile.id,
-    profileName: profile.profileName,
+    profileName: profile.profileName || DEFAULT_SINGLE_PROFILE_NAME,
     heightCm: profile.heightCm,
     weightKg: profile.weightKg,
     chestCm: profile.chestCm,
@@ -29,13 +31,13 @@ function toDraft(profile: BodyProfileResponse): AvatarDraft {
     hipsCm: profile.hipsCm,
     shoulderWidthCm: profile.shoulderWidthCm,
     avatarCustomizationParams: { ...profile.avatarCustomizationParams },
-    isDefault: profile.isDefault,
+    isDefault: true,
   };
 }
 
 function toRequestPayload(draft: AvatarDraft): BodyProfileRequest {
   return {
-    profileName: draft.profileName.trim() || "Dáng chuẩn của tôi",
+    profileName: DEFAULT_SINGLE_PROFILE_NAME,
     heightCm: draft.heightCm,
     weightKg: draft.weightKg,
     chestCm: draft.chestCm,
@@ -43,25 +45,25 @@ function toRequestPayload(draft: AvatarDraft): BodyProfileRequest {
     hipsCm: draft.hipsCm,
     shoulderWidthCm: draft.shoulderWidthCm,
     avatarCustomizationParams: draft.avatarCustomizationParams,
-    isDefault: draft.isDefault,
+    isDefault: true,
   };
 }
 
 export function useBodyProfiles() {
   const { isAuthenticated, isLoading: isAuthLoading, openAuthModal } = useAuth();
 
-  const [profiles, setProfiles] = useState<BodyProfileResponse[]>([]);
+  const [savedProfile, setSavedProfile] = useState<BodyProfileResponse | null>(
+    null
+  );
   const [activeDraft, setActiveDraft] = useState<AvatarDraft>(() =>
     createDefaultAvatarDraft("female")
   );
   const [activeMetric, setActiveMetric] = useState<ActiveBodyMetric>(null);
   const [autoSyncQuickSetup, setAutoSyncQuickSetup] = useState(true);
 
-  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const pendingSaveAfterAuthRef = useRef(false);
@@ -81,13 +83,13 @@ export function useBodyProfiles() {
         await Promise.resolve();
         if (!mounted) return;
         pendingSaveAfterAuthRef.current = false;
-        setProfiles([]);
+        setSavedProfile(null);
         setActiveDraft((prev) => (prev.id ? { ...prev, id: undefined } : prev));
-        setIsLoadingProfiles(false);
+        setIsLoadingProfile(false);
         return;
       }
 
-      setIsLoadingProfiles(true);
+      setIsLoadingProfile(true);
       setErrorMessage(null);
 
       try {
@@ -98,33 +100,31 @@ export function useBodyProfiles() {
             toRequestPayload(draftToSave)
           );
           if (!mounted) return;
-          const refreshed = await bodyProfileService.getMyProfiles(controller.signal);
-          if (!mounted) return;
-          setProfiles(refreshed);
+          setSavedProfile(saved);
           setActiveDraft(toDraft(saved));
-          setSuccessMessage(
-            `Đã đăng nhập và lưu hồ sơ "${saved.profileName}" thành công.`
-          );
+          setSuccessMessage("Đã đăng nhập và lưu số đo Avatar của bạn.");
           return;
         }
 
         const list = await bodyProfileService.getMyProfiles(controller.signal);
         if (!mounted) return;
-        setProfiles(list);
         if (list.length > 0) {
-          const preferred = list.find((item) => item.isDefault) ?? list[0];
-          setActiveDraft(toDraft(preferred));
+          const existing = list.find((item) => item.isDefault) ?? list[0];
+          setSavedProfile(existing);
+          setActiveDraft(toDraft(existing));
+        } else {
+          setSavedProfile(null);
         }
       } catch (err) {
         if (!mounted || controller.signal.aborted) return;
         if (err instanceof ApiRequestError) {
           setErrorMessage(err.message);
         } else {
-          setErrorMessage("Không thể tải danh sách hồ sơ số đo của bạn.");
+          setErrorMessage("Không thể tải số đo cá nhân của bạn.");
         }
       } finally {
         if (mounted) {
-          setIsLoadingProfiles(false);
+          setIsLoadingProfile(false);
         }
       }
     }
@@ -140,52 +140,24 @@ export function useBodyProfiles() {
   const clearFeedback = useCallback(() => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    setFieldErrors({});
   }, []);
-
-  const selectProfile = useCallback(
-    (id: number) => {
-      const found = profiles.find((item) => item.id === id);
-      if (!found) return;
-      clearFeedback();
-      setActiveDraft(toDraft(found));
-    },
-    [profiles, clearFeedback]
-  );
-
-  const startNewDraft = useCallback(
-    (genderStyle?: GenderStyle) => {
-      clearFeedback();
-      const targetGender =
-        genderStyle ?? activeDraftRef.current.avatarCustomizationParams.genderStyle;
-      const fresh = createDefaultAvatarDraft(targetGender);
-      fresh.profileName =
-        profiles.length > 0 ? `Dáng số ${profiles.length + 1}` : "Dáng chuẩn của tôi";
-      fresh.isDefault = profiles.length === 0;
-      setActiveDraft(fresh);
-    },
-    [profiles.length, clearFeedback]
-  );
 
   const updateDimensions = useCallback(
     (
       patch: Partial<
         Pick<
           AvatarDraft,
-          | "profileName"
           | "heightCm"
           | "weightKg"
           | "chestCm"
           | "waistCm"
           | "hipsCm"
           | "shoulderWidthCm"
-          | "isDefault"
         >
       >
     ) => {
       setSuccessMessage(null);
       setErrorMessage(null);
-      setFieldErrors({});
       setActiveDraft((prev) => ({
         ...prev,
         ...patch,
@@ -203,7 +175,6 @@ export function useBodyProfiles() {
     }) => {
       setSuccessMessage(null);
       setErrorMessage(null);
-      setFieldErrors({});
       setActiveDraft((prev) => {
         const nextGender =
           patch.genderStyle ?? prev.avatarCustomizationParams.genderStyle;
@@ -213,7 +184,8 @@ export function useBodyProfiles() {
         const nextWeight = patch.weightKg ?? prev.weightKg;
 
         const nextHair =
-          patch.genderStyle && patch.genderStyle !== prev.avatarCustomizationParams.genderStyle
+          patch.genderStyle &&
+          patch.genderStyle !== prev.avatarCustomizationParams.genderStyle
             ? patch.genderStyle === "male"
               ? "short_clean"
               : "medium_bob"
@@ -287,12 +259,6 @@ export function useBodyProfiles() {
     }
 
     const current = activeDraftRef.current;
-    if (!current.profileName.trim()) {
-      setFieldErrors({ profileName: "Vui lòng đặt tên cho hồ sơ Avatar." });
-      setErrorMessage("Vui lòng nhập tên hồ sơ trước khi lưu.");
-      return null;
-    }
-
     setIsSaving(true);
     try {
       const payload = toRequestPayload(current);
@@ -300,127 +266,64 @@ export function useBodyProfiles() {
         ? await bodyProfileService.updateProfile(current.id, payload)
         : await bodyProfileService.createProfile(payload);
 
-      const refreshed = await bodyProfileService.getMyProfiles();
-      setProfiles(refreshed);
+      setSavedProfile(saved);
       setActiveDraft(toDraft(saved));
       setSuccessMessage(
         current.id
-          ? `Đã cập nhật hồ sơ "${saved.profileName}".`
-          : `Đã lưu hồ sơ mới "${saved.profileName}".`
+          ? "Đã cập nhật số đo cơ thể của bạn."
+          : "Đã lưu số đo Avatar cá nhân thành công."
       );
       return saved;
     } catch (err) {
-      if (err instanceof ApiRequestError) {
-        setErrorMessage(err.message);
-        if (err.fieldErrors) {
-          setFieldErrors(err.fieldErrors);
-        }
-      } else {
-        setErrorMessage("Không thể lưu hồ sơ Avatar, vui lòng thử lại.");
-      }
+      setErrorMessage(
+        err instanceof ApiRequestError
+          ? err.message
+          : "Không thể lưu số đo Avatar, vui lòng thử lại."
+      );
       return null;
     } finally {
       setIsSaving(false);
     }
   }, [isAuthenticated, openAuthModal, clearFeedback]);
 
-  const setAsDefault = useCallback(
-    async (id: number) => {
-      clearFeedback();
-      try {
-        const updated = await bodyProfileService.setDefaultProfile(id);
-        const refreshed = await bodyProfileService.getMyProfiles();
-        setProfiles(refreshed);
-        if (activeDraftRef.current.id === id) {
-          setActiveDraft(toDraft(updated));
-        }
-        setSuccessMessage(`Đã đặt "${updated.profileName}" làm dáng mặc định.`);
-      } catch (err) {
-        setErrorMessage(
-          err instanceof ApiRequestError
-            ? err.message
-            : "Không thể đặt làm hồ sơ mặc định."
-        );
-      }
-    },
-    [clearFeedback]
-  );
-
-  const deleteProfile = useCallback(
-    async (id: number) => {
-      clearFeedback();
-      setIsDeleting(true);
-      try {
-        await bodyProfileService.deleteProfile(id);
-        const refreshed = await bodyProfileService.getMyProfiles();
-        setProfiles(refreshed);
-        if (refreshed.length > 0) {
-          const preferred = refreshed.find((p) => p.isDefault) ?? refreshed[0];
-          setActiveDraft(toDraft(preferred));
-        } else {
-          setActiveDraft(createDefaultAvatarDraft("female"));
-        }
-        setSuccessMessage("Đã xóa hồ sơ số đo.");
-      } catch (err) {
-        setErrorMessage(
-          err instanceof ApiRequestError ? err.message : "Không thể xóa hồ sơ."
-        );
-      } finally {
-        setIsDeleting(false);
-      }
-    },
-    [clearFeedback]
-  );
-
   const hasUnsavedChanges = useMemo(() => {
-    if (!activeDraft.id) return true;
-    const saved = profiles.find((p) => p.id === activeDraft.id);
-    if (!saved) return true;
+    if (!savedProfile) return true;
     return (
-      saved.profileName !== activeDraft.profileName.trim() ||
-      saved.heightCm !== activeDraft.heightCm ||
-      saved.weightKg !== activeDraft.weightKg ||
-      saved.chestCm !== activeDraft.chestCm ||
-      saved.waistCm !== activeDraft.waistCm ||
-      saved.hipsCm !== activeDraft.hipsCm ||
-      saved.shoulderWidthCm !== activeDraft.shoulderWidthCm ||
-      saved.isDefault !== activeDraft.isDefault ||
-      saved.avatarCustomizationParams.genderStyle !==
+      savedProfile.heightCm !== activeDraft.heightCm ||
+      savedProfile.weightKg !== activeDraft.weightKg ||
+      savedProfile.chestCm !== activeDraft.chestCm ||
+      savedProfile.waistCm !== activeDraft.waistCm ||
+      savedProfile.hipsCm !== activeDraft.hipsCm ||
+      savedProfile.shoulderWidthCm !== activeDraft.shoulderWidthCm ||
+      savedProfile.avatarCustomizationParams.genderStyle !==
         activeDraft.avatarCustomizationParams.genderStyle ||
-      saved.avatarCustomizationParams.bodyShape !==
+      savedProfile.avatarCustomizationParams.bodyShape !==
         activeDraft.avatarCustomizationParams.bodyShape ||
-      saved.avatarCustomizationParams.skinTone !==
+      savedProfile.avatarCustomizationParams.skinTone !==
         activeDraft.avatarCustomizationParams.skinTone ||
-      saved.avatarCustomizationParams.hairStyle !==
+      savedProfile.avatarCustomizationParams.hairStyle !==
         activeDraft.avatarCustomizationParams.hairStyle
     );
-  }, [activeDraft, profiles]);
+  }, [activeDraft, savedProfile]);
 
   return {
-    profiles,
+    savedProfile,
     activeDraft,
     activeMetric,
     autoSyncQuickSetup,
     isAuthenticated,
-    isLoadingProfiles,
+    isLoadingProfile,
     isSaving,
-    isDeleting,
     errorMessage,
-    fieldErrors,
     successMessage,
     hasUnsavedChanges,
     setActiveMetric,
     setAutoSyncQuickSetup,
-    selectProfile,
-    startNewDraft,
     updateDimensions,
     updateQuickSetup,
     applySmartEstimate,
     updateAppearance,
     saveProfile,
-    setAsDefault,
-    deleteProfile,
     clearFeedback,
   };
 }
-

@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import {
-  ChevronDown,
-  Loader2,
-  Plus,
-  Star,
-  Trash2,
-  UserCheck,
-} from "lucide-react";
+import { Check, ChevronDown, Loader2, Ruler, UserCheck } from "lucide-react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import Avatar3DCanvas from "@/features/avatar/components/Avatar3DCanvas";
 import BodyProfileBuilder, {
@@ -20,31 +13,25 @@ import { getBodyBalanceNote } from "@/features/avatar/utils/bodyEstimator";
 export default function AvatarWorkspace() {
   const { openAuthModal } = useAuth();
   const {
-    profiles,
+    savedProfile,
     activeDraft,
     autoSyncQuickSetup,
     isAuthenticated,
-    isLoadingProfiles,
+    isLoadingProfile,
     isSaving,
-    isDeleting,
     errorMessage,
-    fieldErrors,
     successMessage,
     hasUnsavedChanges,
     setAutoSyncQuickSetup,
-    selectProfile,
-    startNewDraft,
     updateDimensions,
     updateQuickSetup,
     applySmartEstimate,
     updateAppearance,
     saveProfile,
-    setAsDefault,
-    deleteProfile,
   } = useBodyProfiles();
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   const currentStep =
     GUIDED_AVATAR_STEPS[stepIndex] ?? GUIDED_AVATAR_STEPS[0];
@@ -62,162 +49,97 @@ export default function AvatarWorkspace() {
         activeMetric={currentStep.metric}
       />
 
-      {/* Top-Left Compact Saved Profile Switcher Pill */}
+      {/* Top-Left Compact Body Summary Chip (1 person = 1 editable body profile) */}
       <div className="pointer-events-none absolute left-3 top-[78px] sm:left-6 sm:top-[84px] z-20 flex flex-col items-start gap-2">
         <button
           type="button"
-          onClick={() => setProfileMenuOpen((prev) => !prev)}
-          className="pointer-events-auto inline-flex h-8 max-w-[185px] sm:max-w-[230px] items-center gap-1.5 rounded-full liquid-glass-subtle px-3 text-xs font-medium text-[#191817] hover:bg-white/80 transition-all cursor-pointer"
+          onClick={() => setSummaryOpen((prev) => !prev)}
+          className="pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-full liquid-glass-subtle px-3 text-xs font-medium text-[#191817] hover:bg-white/85 transition-all cursor-pointer"
         >
-          {activeDraft.isDefault && isAuthenticated && (
-            <Star className="h-3 w-3 shrink-0 fill-[#A25B26] text-[#A25B26]" />
+          {isLoadingProfile ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#A25B26]" />
+          ) : savedProfile && !hasUnsavedChanges ? (
+            <Check className="h-3.5 w-3.5 text-[#2C523F]" />
+          ) : (
+            <Ruler className="h-3.5 w-3.5 text-[#A25B26]" />
           )}
-          <span className="truncate">
-            {activeDraft.profileName.trim() || "Dáng chuẩn của tôi"}
+          <span className="font-mono">
+            {activeDraft.heightCm} cm · {activeDraft.weightKg} kg
           </span>
           <ChevronDown
-            className={`h-3.5 w-3.5 shrink-0 text-[#57534E] transition-transform ${
-              profileMenuOpen ? "rotate-180" : ""
+            className={`h-3.5 w-3.5 text-[#57534E] transition-transform ${
+              summaryOpen ? "rotate-180" : ""
             }`}
           />
         </button>
 
-        {/* Expandable Profile & Quick Stats Popover */}
-        {profileMenuOpen && (
-          <div className="pointer-events-auto w-72 rounded-2xl liquid-glass p-3.5 text-xs shadow-lg">
+        {summaryOpen && (
+          <div className="pointer-events-auto w-72 rounded-2xl liquid-glass p-4 text-xs shadow-lg">
             <div className="flex items-center justify-between border-b border-[#191817]/10 pb-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#A25B26]">
-                Hồ sơ số đo 3D
+              <span className="text-xs font-semibold text-[#191817]">
+                Số đo cơ thể của bạn
               </span>
+              {savedProfile && (
+                <span className="rounded-full bg-[#2C523F]/10 px-2 py-0.5 text-[11px] font-medium text-[#2C523F]">
+                  {hasUnsavedChanges ? "Chưa lưu" : "Đã đồng bộ"}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-[#191817]">
+              <div className="rounded-xl bg-white/65 px-2.5 py-1.5">
+                <span className="block text-[11px] text-[#57534E] font-sans">
+                  Rộng vai
+                </span>
+                <strong>{activeDraft.shoulderWidthCm} cm</strong>
+              </div>
+              <div className="rounded-xl bg-white/65 px-2.5 py-1.5">
+                <span className="block text-[11px] text-[#57534E] font-sans">
+                  Vòng ngực
+                </span>
+                <strong>{activeDraft.chestCm} cm</strong>
+              </div>
+              <div className="rounded-xl bg-white/65 px-2.5 py-1.5">
+                <span className="block text-[11px] text-[#57534E] font-sans">
+                  Vòng eo
+                </span>
+                <strong>{activeDraft.waistCm} cm</strong>
+              </div>
+              <div className="rounded-xl bg-white/65 px-2.5 py-1.5">
+                <span className="block text-[11px] text-[#57534E] font-sans">
+                  Vòng hông
+                </span>
+                <strong>{activeDraft.hipsCm} cm</strong>
+              </div>
+            </div>
+
+            <p className="mt-2.5 text-xs text-[#57534E] leading-relaxed">
+              {balanceNote}
+            </p>
+
+            {!isAuthenticated && (
               <button
                 type="button"
                 onClick={() => {
-                  startNewDraft();
-                  setStepIndex(0);
-                  setProfileMenuOpen(false);
+                  setSummaryOpen(false);
+                  openAuthModal("login");
                 }}
-                className="inline-flex items-center gap-1 rounded-full bg-[#191817] px-2.5 py-0.5 font-mono text-[10px] text-[#FAF7F2] hover:bg-[#22384F] cursor-pointer"
+                className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#191817] py-2 text-xs font-semibold text-[#FAF7F2] hover:bg-[#22384F] cursor-pointer"
               >
-                <Plus className="h-2.5 w-2.5" />
-                Mới
+                <UserCheck className="h-3.5 w-3.5" />
+                Đăng nhập để lưu số đo
               </button>
-            </div>
-
-            {isAuthenticated ? (
-              <div className="mt-2.5 space-y-1.5">
-                {isLoadingProfiles ? (
-                  <div className="flex items-center gap-2 py-2 text-[#57534E]">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Đang tải hồ sơ...</span>
-                  </div>
-                ) : profiles.length > 0 ? (
-                  <div className="max-h-40 space-y-1 overflow-y-auto pr-0.5">
-                    {profiles.map((profile) => {
-                      const selected = activeDraft.id === profile.id;
-                      return (
-                        <button
-                          key={profile.id}
-                          type="button"
-                          onClick={() => {
-                            selectProfile(profile.id);
-                            setProfileMenuOpen(false);
-                          }}
-                          className={`flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
-                            selected
-                              ? "bg-[#191817] text-[#FAF7F2] font-medium"
-                              : "bg-white/60 text-[#191817] hover:bg-white"
-                          }`}
-                        >
-                          <span className="truncate">{profile.profileName}</span>
-                          {profile.isDefault && (
-                            <Star
-                              className={`h-3 w-3 shrink-0 ${
-                                selected
-                                  ? "fill-[#A25B26] text-[#A25B26]"
-                                  : "text-[#A25B26]"
-                              }`}
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="py-1 text-[11px] text-[#57534E]">
-                    Chưa có hồ sơ nào được lưu.
-                  </p>
-                )}
-
-                {activeDraft.id && (
-                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-[#191817]/10 text-[11px]">
-                    {!activeDraft.isDefault ? (
-                      <button
-                        type="button"
-                        onClick={() => void setAsDefault(activeDraft.id!)}
-                        className="inline-flex items-center gap-1 font-medium text-[#A25B26] hover:underline cursor-pointer"
-                      >
-                        <Star className="h-3 w-3" />
-                        Đặt mặc định
-                      </button>
-                    ) : (
-                      <span className="text-[10px] font-mono text-[#2C523F]">
-                        Đang dùng mặc định
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      disabled={isDeleting}
-                      onClick={() => void deleteProfile(activeDraft.id!)}
-                      className="inline-flex items-center gap-1 text-[#8E8A85] hover:text-red-600 disabled:opacity-50 cursor-pointer"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Xóa
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="mt-2.5 space-y-2">
-                <p className="flex items-start gap-1.5 text-[11px] text-[#57534E] leading-snug">
-                  <UserCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A25B26]" />
-                  <span>
-                    Đăng nhập để lưu nhiều hồ sơ vóc dáng và đồng bộ sang phòng thử đồ.
-                  </span>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    openAuthModal("login");
-                  }}
-                  className="w-full rounded-xl bg-[#191817] py-1.5 font-mono text-[10px] uppercase tracking-wider text-[#FAF7F2] hover:bg-[#22384F] cursor-pointer"
-                >
-                  Đăng nhập / Đăng ký
-                </button>
-              </div>
             )}
-
-            {/* Compact Telemetry Summary inside Popover */}
-            <div className="mt-2.5 rounded-xl bg-white/60 p-2 text-[11px]">
-              <p className="font-mono text-[10px] font-semibold text-[#191817]">
-                {activeDraft.heightCm} cm • {activeDraft.weightKg} kg
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] text-[#57534E]">
-                Vai {activeDraft.shoulderWidthCm} · Ngực {activeDraft.chestCm} · Eo{" "}
-                {activeDraft.waistCm} · Hông {activeDraft.hipsCm}
-              </p>
-              <p className="mt-1 text-[10px] text-[#8E8A85]">{balanceNote}</p>
-            </div>
           </div>
         )}
       </div>
 
       {/* Top-Center Guided Step Prompt */}
-      <div className="pointer-events-none absolute inset-x-4 top-[120px] lg:inset-x-64 lg:top-[84px] z-10 flex flex-col items-center text-center">
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#8E8A85]">
+      <div className="pointer-events-none absolute inset-x-4 top-[118px] lg:inset-x-64 lg:top-[84px] z-10 flex flex-col items-center text-center">
+        <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#57534E]">
           Bước {stepIndex + 1} / {GUIDED_AVATAR_STEPS.length}
         </span>
-        <h1 className="mt-0.5 font-serif text-base sm:text-xl lg:text-2xl font-normal text-[#191817] leading-snug">
+        <h1 className="mt-0.5 font-serif text-lg sm:text-xl lg:text-2xl font-normal text-[#191817] leading-snug">
           {currentStep.promptPrefix}{" "}
           <span className="font-semibold text-[#A25B26]">
             {currentStep.promptHighlight}
@@ -226,8 +148,8 @@ export default function AvatarWorkspace() {
         </h1>
       </div>
 
-      {/* Bottom-Center Compact Guided Control Dock */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-5 z-20 flex justify-center px-3">
+      {/* Bottom-Center Unified Compact Control Dock (flush near bottom to maximize Avatar space) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-4 z-20 flex justify-center px-3">
         <BodyProfileBuilder
           stepIndex={stepIndex}
           onStepChange={setStepIndex}
@@ -237,7 +159,6 @@ export default function AvatarWorkspace() {
           isSaving={isSaving}
           hasUnsavedChanges={hasUnsavedChanges}
           errorMessage={errorMessage}
-          fieldErrors={fieldErrors}
           successMessage={successMessage}
           onToggleAutoSync={setAutoSyncQuickSetup}
           onApplySmartEstimate={applySmartEstimate}
