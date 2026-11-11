@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import RulerSlider from "@/features/avatar/components/RulerSlider";
 import {
-  BODY_SHAPE_OPTIONS,
   HAIR_STYLE_OPTIONS,
   SKIN_TONE_OPTIONS,
 } from "@/features/avatar/utils/bodyEstimator";
@@ -19,7 +18,6 @@ import type {
   ActiveBodyMetric,
   AvatarCustomizationParams,
   AvatarDraft,
-  BodyShapePreset,
   GenderStyle,
 } from "@/types/bodyProfile";
 
@@ -50,12 +48,12 @@ export interface GuidedStepDef {
 export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   {
     id: "shape",
-    title: "Khung dáng cơ bản",
+    title: "Phom cơ thể",
     promptPrefix: "Hãy bắt đầu bằng cách chọn",
-    promptHighlight: "khung dáng & hình thể",
+    promptHighlight: "phom cơ thể",
     promptSuffix: "gần giống bạn nhất.",
     metric: null,
-    tip: "MIDORA tự động ước lượng các số đo gợi ý dựa theo khung dáng bạn chọn.",
+    tip: "Chọn Nữ, Nam hoặc Unisex để MIDORA khởi tạo tỷ lệ khung dáng và tự ước lượng số đo ban đầu.",
   },
   {
     id: "height",
@@ -172,7 +170,6 @@ interface BodyProfileBuilderProps {
   onApplySmartEstimate: () => void;
   onUpdateQuickSetup: (patch: {
     genderStyle?: GenderStyle;
-    bodyShape?: BodyShapePreset;
     heightCm?: number;
     weightKg?: number;
   }) => void;
@@ -224,7 +221,7 @@ export default function BodyProfileBuilder({
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === GUIDED_AVATAR_STEPS.length - 1;
 
-  const { genderStyle, bodyShape, skinTone, hairStyle } =
+  const { genderStyle, skinTone, hairStyle } =
     activeDraft.avatarCustomizationParams;
 
   const getNumericValue = (): number => {
@@ -427,48 +424,23 @@ export default function BodyProfileBuilder({
         {/* Step Body */}
         <div className="mt-2.5">
           {currentStep.id === "shape" && (
-            <div className="space-y-2.5">
-              <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-white/60 p-1">
-                {GENDER_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() =>
-                      onUpdateQuickSetup({ genderStyle: option.id })
-                    }
-                    className={`rounded-lg py-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
-                      genderStyle === option.id
-                        ? "bg-[#191817] text-[#FAF7F2] shadow-xs"
-                        : "text-[#57534E] hover:text-[#191817]"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {BODY_SHAPE_OPTIONS.map((shape) => {
-                  const selected = bodyShape === shape.id;
-                  return (
-                    <button
-                      key={shape.id}
-                      type="button"
-                      onClick={() =>
-                        onUpdateQuickSetup({ bodyShape: shape.id })
-                      }
-                      title={shape.hint}
-                      className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs sm:text-[13px] font-medium transition-colors cursor-pointer ${
-                        selected
-                          ? "border-[#A25B26] bg-[#A25B26] text-[#FAF7F2]"
-                          : "border-[#D3CBC0] bg-white/75 text-[#191817] hover:bg-white"
-                      }`}
-                    >
-                      {shape.label}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-white/60 p-1">
+              {GENDER_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() =>
+                    onUpdateQuickSetup({ genderStyle: option.id })
+                  }
+                  className={`rounded-lg py-2.5 text-sm font-semibold transition-colors cursor-pointer ${
+                    genderStyle === option.id
+                      ? "bg-[#191817] text-[#FAF7F2] shadow-xs"
+                      : "text-[#57534E] hover:text-[#191817]"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           )}
 

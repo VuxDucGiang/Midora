@@ -14,7 +14,6 @@ import type {
   AvatarDraft,
   BodyProfileRequest,
   BodyProfileResponse,
-  BodyShapePreset,
   GenderStyle,
 } from "@/types/bodyProfile";
 
@@ -169,7 +168,6 @@ export function useBodyProfiles() {
   const updateQuickSetup = useCallback(
     (patch: {
       genderStyle?: GenderStyle;
-      bodyShape?: BodyShapePreset;
       heightCm?: number;
       weightKg?: number;
     }) => {
@@ -178,8 +176,7 @@ export function useBodyProfiles() {
       setActiveDraft((prev) => {
         const nextGender =
           patch.genderStyle ?? prev.avatarCustomizationParams.genderStyle;
-        const nextShape =
-          patch.bodyShape ?? prev.avatarCustomizationParams.bodyShape;
+        const nextShape = "balanced" as const;
         const nextHeight = patch.heightCm ?? prev.heightCm;
         const nextWeight = patch.weightKg ?? prev.weightKg;
 
@@ -223,13 +220,17 @@ export function useBodyProfiles() {
     setActiveDraft((prev) => {
       const estimated = estimateBodyMeasurements({
         genderStyle: prev.avatarCustomizationParams.genderStyle,
-        bodyShape: prev.avatarCustomizationParams.bodyShape,
+        bodyShape: "balanced",
         heightCm: prev.heightCm,
         weightKg: prev.weightKg,
       });
       return {
         ...prev,
         ...estimated,
+        avatarCustomizationParams: {
+          ...prev.avatarCustomizationParams,
+          bodyShape: "balanced",
+        },
       };
     });
   }, []);

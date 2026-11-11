@@ -21,20 +21,6 @@ export const SKIN_TONE_OPTIONS: SkinToneOption[] = [
   { id: "linen", label: "Vải Linen", hex: "#E5DDD0", isMannequin: true },
 ];
 
-export interface BodyShapeOption {
-  id: BodyShapePreset;
-  label: string;
-  hint: string;
-}
-
-export const BODY_SHAPE_OPTIONS: BodyShapeOption[] = [
-  { id: "slim", label: "Thanh mảnh", hint: "Khung xương nhỏ, dáng gọn" },
-  { id: "balanced", label: "Cân đối", hint: "Tỷ lệ vai - eo - hông hài hòa" },
-  { id: "curvy", label: "Đầy đặn", hint: "Eo thon, vòng ngực & hông nổi bật" },
-  { id: "athletic", label: "Thể thao", hint: "Vai vững, thân trên săn chắc" },
-  { id: "broad_shoulder", label: "Vai rộng", hint: "Phần vai rộng, form áo suông đẹp" },
-];
-
 export interface HairStyleOption {
   id: HairStyle;
   label: string;
