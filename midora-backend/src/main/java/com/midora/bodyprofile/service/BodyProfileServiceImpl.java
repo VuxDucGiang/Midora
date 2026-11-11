@@ -52,27 +52,23 @@ public class BodyProfileServiceImpl implements BodyProfileService {
                 ? request.avatarCustomizationParams().withDefaultsIfMissing()
                 : AvatarCustomizationParams.defaults();
 
-        boolean hasAnyProfile = bodyProfileRepository.countByUserId(userId) > 0;
-        boolean shouldBeDefault = !hasAnyProfile || Boolean.TRUE.equals(request.isDefault());
-
-        if (shouldBeDefault && hasAnyProfile) {
-            bodyProfileRepository.clearDefaultForUser(userId, null);
-        }
-
         float shoulderWidth = resolveShoulderWidth(request, customization);
+        String resolvedName = resolveProfileName(request.profileName());
 
-        BodyProfile profile = BodyProfile.builder()
-                .user(user)
-                .profileName(request.profileName().trim())
-                .heightCm(request.heightCm())
-                .weightKg(request.weightKg())
-                .chestCm(request.chestCm())
-                .waistCm(request.waistCm())
-                .hipsCm(request.hipsCm())
-                .shoulderWidthCm(shoulderWidth)
-                .avatarCustomizationParams(customization)
-                .isDefault(shouldBeDefault)
-                .build();
+        // Single-profile-per-user invariant: update existing profile in-place if present
+        BodyProfile profile = bodyProfileRepository.findFirstByUserIdAndIsDefaultTrue(userId)
+                .or(() -> bodyProfileRepository.findFirstByUserIdOrderByUpdatedAtDesc(userId))
+                .orElseGet(() -> BodyProfile.builder().user(user).build());
+
+        profile.setProfileName(resolvedName);
+        profile.setHeightCm(request.heightCm());
+        profile.setWeightKg(request.weightKg());
+        profile.setChestCm(request.chestCm());
+        profile.setWaistCm(request.waistCm());
+        profile.setHipsCm(request.hipsCm());
+        profile.setShoulderWidthCm(shoulderWidth);
+        profile.setAvatarCustomizationParams(customization);
+        profile.setIsDefault(true);
 
         BodyProfile saved = bodyProfileRepository.save(profile);
         return bodyProfileMapper.toResponse(saved);
@@ -90,15 +86,8 @@ public class BodyProfileServiceImpl implements BodyProfileService {
                     ? profile.getAvatarCustomizationParams().withDefaultsIfMissing()
                     : AvatarCustomizationParams.defaults());
 
-        boolean shouldBeDefault = Boolean.TRUE.equals(request.isDefault());
-        if (shouldBeDefault) {
-            bodyProfileRepository.clearDefaultForUser(userId, profileId);
-            profile.setIsDefault(true);
-        } else if (request.isDefault() != null && !Boolean.TRUE.equals(profile.getIsDefault())) {
-            profile.setIsDefault(false);
-        }
-
-        profile.setProfileName(request.profileName().trim());
+        profile.setIsDefault(true);
+        profile.setProfileName(resolveProfileName(request.profileName()));
         profile.setHeightCm(request.heightCm());
         profile.setWeightKg(request.weightKg());
         profile.setChestCm(request.chestCm());
@@ -149,6 +138,13 @@ public class BodyProfileServiceImpl implements BodyProfileService {
         float ratio = "male".equals(customization.genderStyle()) ? 0.255f : 0.235f;
         float estimated = request.heightCm() * ratio + (request.chestCm() - 88.0f) * 0.14f;
         return Math.round(Math.max(32.0f, Math.min(58.0f, estimated)) * 10.0f) / 10.0f;
+    }
+
+    private String resolveProfileName(String rawName) {
+        if (rawName == null || rawName.isBlank()) {
+            return "Số đo cá nhân";
+        }
+        return rawName.trim();
     }
 }
 

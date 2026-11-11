@@ -4,12 +4,10 @@ import com.midora.bodyprofile.dto.AvatarCustomizationParams;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record BodyProfileRequest(
-        @NotBlank(message = "Tên hồ sơ số đo không được để trống")
         @Size(max = 100, message = "Tên hồ sơ tối đa 100 ký tự")
         String profileName,
 

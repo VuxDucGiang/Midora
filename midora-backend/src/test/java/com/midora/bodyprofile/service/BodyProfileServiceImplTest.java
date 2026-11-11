@@ -23,7 +23,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +45,7 @@ class BodyProfileServiceImplTest {
     }
 
     @Test
-    void createProfile_firstProfileAutoDefaultsAndEstimatesShoulder() {
+    void createProfile_createsSingleProfileAndEstimatesShoulder() {
         User user = User.builder()
                 .id(1L)
                 .email("demo@midora.vn")
@@ -56,7 +55,7 @@ class BodyProfileServiceImplTest {
                 .build();
 
         BodyProfileRequest request = new BodyProfileRequest(
-                "Dáng chuẩn của tôi",
+                null,
                 165.0f,
                 54.0f,
                 86.0f,
@@ -68,7 +67,8 @@ class BodyProfileServiceImplTest {
         );
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(bodyProfileRepository.countByUserId(1L)).thenReturn(0L);
+        when(bodyProfileRepository.findFirstByUserIdAndIsDefaultTrue(1L)).thenReturn(Optional.empty());
+        when(bodyProfileRepository.findFirstByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(Optional.empty());
         when(bodyProfileRepository.save(any(BodyProfile.class))).thenAnswer(inv -> {
             BodyProfile p = inv.getArgument(0);
             p.setId(100L);
@@ -80,29 +80,30 @@ class BodyProfileServiceImplTest {
         BodyProfileResponse response = bodyProfileService.createProfile(1L, request);
 
         assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.profileName()).isEqualTo("Số đo cá nhân");
         assertThat(response.isDefault()).isTrue();
         assertThat(response.shoulderWidthCm()).isBetween(34.0f, 44.0f);
         assertThat(response.avatarCustomizationParams().hairStyle()).isEqualTo("medium_bob");
     }
 
     @Test
-    void updateProfile_clearsPreviousDefaultWhenMarkedDefault() {
+    void createProfile_upsertsExistingProfileWhenAlreadyPresent() {
         User user = User.builder().id(1L).email("demo@midora.vn").fullName("An").passwordHash("x").build();
         BodyProfile existing = BodyProfile.builder()
                 .id(20L)
                 .user(user)
-                .profileName("Old")
+                .profileName("Số đo cá nhân")
                 .heightCm(170f)
                 .weightKg(65f)
                 .chestCm(92f)
                 .waistCm(76f)
                 .hipsCm(94f)
                 .shoulderWidthCm(43f)
-                .isDefault(false)
+                .isDefault(true)
                 .build();
 
         BodyProfileRequest request = new BodyProfileRequest(
-                "Updated Profile",
+                "Số đo cá nhân",
                 172.0f,
                 66.0f,
                 94.0f,
@@ -113,15 +114,16 @@ class BodyProfileServiceImplTest {
                 true
         );
 
-        when(bodyProfileRepository.findByIdAndUserId(20L, 1L)).thenReturn(Optional.of(existing));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(bodyProfileRepository.findFirstByUserIdAndIsDefaultTrue(1L)).thenReturn(Optional.of(existing));
         when(bodyProfileRepository.save(any(BodyProfile.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        BodyProfileResponse updated = bodyProfileService.updateProfile(1L, 20L, request);
+        BodyProfileResponse updated = bodyProfileService.createProfile(1L, request);
 
-        verify(bodyProfileRepository).clearDefaultForUser(1L, 20L);
+        assertThat(updated.id()).isEqualTo(20L);
         assertThat(updated.isDefault()).isTrue();
-        assertThat(updated.profileName()).isEqualTo("Updated Profile");
         assertThat(updated.heightCm()).isEqualTo(172.0f);
+        assertThat(updated.waistCm()).isEqualTo(74.0f);
     }
 
     @Test
@@ -135,4 +137,3 @@ class BodyProfileServiceImplTest {
                 .isEqualTo(ErrorCode.BODY_PROFILE_NOT_FOUND);
     }
 }
-
