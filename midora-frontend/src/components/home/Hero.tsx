@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import { proposalSummary } from "@/data/proposalData";
@@ -37,12 +38,18 @@ export default function Hero() {
 
         <Reveal delay={360} direction="up">
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
+            <Link
+              href="/avatar"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xs bg-[#191817] px-6 text-xs font-medium tracking-wider uppercase text-[#FAF7F2] transition-all duration-300 hover:bg-[#22384F] hover:-translate-y-0.5"
+            >
+              Tạo Avatar 3D
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
             <a
               href="#de-an"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xs bg-[#191817] px-6 text-xs font-medium tracking-wider uppercase text-[#FAF7F2] transition-all duration-300 hover:bg-[#2C3E55] hover:-translate-y-0.5"
+              className="inline-flex h-11 items-center justify-center rounded-xs border border-[#D3CBC0] bg-[#FFFFFF] px-6 text-xs font-medium tracking-wider uppercase text-[#191817] transition-all duration-300 hover:bg-[#F4EFEA] hover:-translate-y-0.5"
             >
               Tìm hiểu Đề án
-              <ArrowRight className="h-3.5 w-3.5" />
             </a>
             <a
               href="#doi-ngu"

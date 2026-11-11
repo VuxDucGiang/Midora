@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored Three.js WASM/JS decoders:
+    "public/libs/**",
   ]),
 ]);
 
