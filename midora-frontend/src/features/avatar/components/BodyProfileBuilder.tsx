@@ -7,7 +7,6 @@ import {
   ChevronRight,
   HelpCircle,
   Loader2,
-  Save,
   Sparkles,
 } from "lucide-react";
 import RulerSlider from "@/features/avatar/components/RulerSlider";
@@ -34,7 +33,6 @@ export interface GuidedStepDef {
     | "waist"
     | "hips"
     | "appearance";
-  shortLabel: string;
   title: string;
   promptPrefix: string;
   promptHighlight: string;
@@ -52,7 +50,6 @@ export interface GuidedStepDef {
 export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   {
     id: "shape",
-    shortLabel: "Dáng",
     title: "Khung dáng cơ bản",
     promptPrefix: "Hãy bắt đầu bằng cách chọn",
     promptHighlight: "khung dáng & hình thể",
@@ -62,7 +59,6 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "height",
-    shortLabel: "Cao",
     title: "Chiều cao",
     promptPrefix: "Tiếp theo, điều chỉnh",
     promptHighlight: "chiều cao thực tế",
@@ -78,7 +74,6 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "weight",
-    shortLabel: "Nặng",
     title: "Cân nặng",
     promptPrefix: "Chọn mức",
     promptHighlight: "cân nặng",
@@ -94,7 +89,6 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "shoulder",
-    shortLabel: "Vai",
     title: "Độ rộng vai",
     promptPrefix: "Kiểm tra & tinh chỉnh",
     promptHighlight: "độ rộng vai",
@@ -110,7 +104,6 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "chest",
-    shortLabel: "Ngực",
     title: "Vòng ngực",
     promptPrefix: "Kéo thước đo để chỉnh",
     promptHighlight: "vòng ngực",
@@ -126,7 +119,6 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "waist",
-    shortLabel: "Eo",
     title: "Vòng eo",
     promptPrefix: "Tiếp tục, hãy nhập số đo",
     promptHighlight: "vòng eo",
@@ -142,7 +134,6 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "hips",
-    shortLabel: "Hông",
     title: "Vòng hông",
     promptPrefix: "Tinh chỉnh số đo",
     promptHighlight: "vòng hông",
@@ -158,10 +149,9 @@ export const GUIDED_AVATAR_STEPS: GuidedStepDef[] = [
   },
   {
     id: "appearance",
-    shortLabel: "Kiểu",
-    title: "Ngoại hình Avatar",
+    title: "Sắc thái & Kiểu tóc",
     promptPrefix: "Hoàn tất — chọn",
-    promptHighlight: "sắc thái & lưu số đo",
+    promptHighlight: "kiểu tóc & lưu Avatar",
     promptSuffix: "cá nhân.",
     metric: null,
     tip: "Chọn tông da hoặc chất liệu vải Linen và kiểu tóc yêu thích cho Avatar của bạn.",
@@ -305,7 +295,7 @@ export default function BodyProfileBuilder({
   };
 
   return (
-    <div className="pointer-events-auto flex w-[min(95vw,560px)] flex-col items-center gap-2">
+    <div className="pointer-events-auto flex w-[min(94vw,490px)] flex-col items-center gap-2">
       {/* Compact Status Toast directly above card */}
       {(errorMessage || successMessage) && (
         <div
@@ -320,21 +310,21 @@ export default function BodyProfileBuilder({
         </div>
       )}
 
-      {/* Unified Compact Bottom Dock Card (No extra external buttons beneath!) */}
+      {/* Minimal Centered Floating Control Card */}
       <div className="w-full rounded-2xl liquid-glass px-4 py-3.5 sm:px-6 sm:py-4">
-        {/* Header Row: Prev Arrow | Center Label + Big Reading | Quick Save & Next CTA */}
-        <div className="flex items-center justify-between gap-2">
+        {/* Header Row: Left Arrow | Center Title & Big Reading | Right Arrow (or Save Avatar on final step) */}
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
           <button
             type="button"
             disabled={isFirstStep}
             onClick={() => goToStep(stepIndex - 1)}
             aria-label="Bước trước"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#191817]/10 bg-white/60 text-[#191817] transition-colors hover:bg-white disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#191817]/10 bg-white/65 text-[#191817] transition-colors hover:bg-white disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
 
-          <div className="min-w-0 flex-1 text-center">
+          <div className="min-w-0 text-center">
             <div className="flex items-center justify-center gap-1.5">
               <span className="text-sm sm:text-base font-semibold text-[#191817]">
                 {currentStep.title}
@@ -395,63 +385,36 @@ export default function BodyProfileBuilder({
             )}
           </div>
 
-          {/* Ergonomic Integrated Actions right beside measurement */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            {!isLastStep ? (
-              <>
-                {hasUnsavedChanges ? (
-                  <button
-                    type="button"
-                    disabled={isSaving}
-                    onClick={onSave}
-                    title="Lưu số đo hiện tại"
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[#D3CBC0] bg-white/85 px-3 text-xs sm:text-sm font-semibold text-[#191817] transition-colors hover:bg-white disabled:opacity-60 cursor-pointer"
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Save className="h-3.5 w-3.5 text-[#A25B26]" />
-                    )}
-                    <span className="hidden sm:inline">Lưu</span>
-                  </button>
-                ) : (
-                  <span className="hidden sm:inline-flex h-9 items-center gap-1 rounded-full bg-[#2C523F]/10 px-2.5 text-xs font-medium text-[#2C523F]">
-                    <Check className="h-3.5 w-3.5" />
-                    Đã lưu
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => goToStep(stepIndex + 1)}
-                  className="inline-flex h-9 items-center justify-center gap-1 rounded-full bg-[#A25B26] px-3.5 sm:px-4 text-xs sm:text-sm font-semibold text-[#FAF7F2] shadow-xs transition-all hover:bg-[#8B4C1D] cursor-pointer"
-                >
-                  <span>Tiếp</span>
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                disabled={isSaving}
-                onClick={onSave}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#A25B26] px-4 sm:px-5 text-xs sm:text-sm font-semibold text-[#FAF7F2] shadow-xs transition-all hover:bg-[#8B4C1D] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
+          {!isLastStep ? (
+            <button
+              type="button"
+              onClick={() => goToStep(stepIndex + 1)}
+              aria-label="Bước tiếp theo"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#191817]/10 bg-white/65 text-[#191817] transition-colors hover:bg-white cursor-pointer"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={onSave}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-[#A25B26] px-4 sm:px-5 text-xs sm:text-sm font-semibold text-[#FAF7F2] shadow-xs transition-all hover:bg-[#8B4C1D] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                !hasUnsavedChanges && isAuthenticated && (
                   <Check className="h-4 w-4" />
-                )}
-                <span>
-                  {!isAuthenticated
-                    ? "Đăng nhập & Lưu"
-                    : hasUnsavedChanges
-                      ? "Lưu Avatar"
-                      : "Đã lưu"}
-                </span>
-              </button>
-            )}
-          </div>
+                )
+              )}
+              <span>
+                {!hasUnsavedChanges && isAuthenticated
+                  ? "Đã lưu"
+                  : "Lưu Avatar"}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Readable Measurement Tip */}
@@ -598,27 +561,6 @@ export default function BodyProfileBuilder({
               </div>
             </div>
           )}
-        </div>
-
-        {/* Readable Quick-Jump Step Pills */}
-        <div className="mt-3 flex items-center justify-between gap-1 border-t border-[#191817]/[0.08] pt-2.5 overflow-x-auto">
-          {GUIDED_AVATAR_STEPS.map((step, idx) => {
-            const active = idx === stepIndex;
-            return (
-              <button
-                key={step.id}
-                type="button"
-                onClick={() => goToStep(idx)}
-                className={`rounded-full px-2.5 py-1 text-xs sm:text-[13px] font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                  active
-                    ? "bg-[#191817] text-[#FAF7F2]"
-                    : "text-[#57534E] hover:bg-white/75 hover:text-[#191817]"
-                }`}
-              >
-                {step.shortLabel}
-              </button>
-            );
-          })}
         </div>
       </div>
     </div>

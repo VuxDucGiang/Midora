@@ -39,19 +39,19 @@ function computeCameraGoal(preset: CameraPreset, heightCm: number): CameraGoal {
       };
     case "angle45":
       return {
-        position: new THREE.Vector3(2.45 * scaleD, H * 0.52, 2.45 * scaleD),
-        target: new THREE.Vector3(0, H * 0.45, 0),
+        position: new THREE.Vector3(2.4 * scaleD, H * 0.52, 2.4 * scaleD),
+        target: new THREE.Vector3(0, H * 0.46, 0),
       };
     case "back":
       return {
-        position: new THREE.Vector3(-0.08, H * 0.50, -3.55 * scaleD),
-        target: new THREE.Vector3(0, H * 0.45, 0),
+        position: new THREE.Vector3(-0.08, H * 0.50, -3.5 * scaleD),
+        target: new THREE.Vector3(0, H * 0.46, 0),
       };
     case "full":
     default:
       return {
-        position: new THREE.Vector3(0.06, H * 0.50, 3.6 * scaleD),
-        target: new THREE.Vector3(0, H * 0.45, 0),
+        position: new THREE.Vector3(0.06, H * 0.50, 3.55 * scaleD),
+        target: new THREE.Vector3(0, H * 0.46, 0),
       };
   }
 }
