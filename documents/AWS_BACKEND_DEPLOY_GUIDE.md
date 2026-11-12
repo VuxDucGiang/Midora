@@ -26,11 +26,11 @@ flowchart LR
 ## 2. Bảng theo dõi tiến độ
 
 - [x] **Bước 1**: Chuẩn bị code Backend (`HealthController`, `application-prod.properties`, `Dockerfile`, `.env.example`)
-- [ ] **Bước 2**: Tạo Security Group & Database trên **Amazon RDS (MySQL 8.0)**
-- [ ] **Bước 3**: Tạo **EC2 Ubuntu**, cấp quyền Security Group & cài Docker/Nginx/Swap
-- [ ] **Bước 4**: Đưa source code lên EC2, cấu hình `.env` & chạy Docker container
-- [ ] **Bước 5**: Cấu hình Nginx Reverse Proxy + SSL HTTPS
-- [ ] **Bước 6**: Kết nối Frontend (`NEXT_PUBLIC_API_URL`) & Kiểm thử toàn bộ hệ thống
+- [x] **Bước 2**: Tạo Database trên **Amazon RDS (MySQL 8.4)** & nối quyền **EC2 connection**
+- [x] **Bước 3**: Tạo **EC2 Ubuntu**, gắn Elastic IP, cài Swap 2GB / Docker / Nginx / Certbot
+- [x] **Bước 4**: Clone code lên EC2, cấu hình `.env` & chạy Docker container (`GET /api/v1/health` OK)
+- [x] **Bước 5**: Trỏ DNS `api.midora.id.vn` -> Cấu hình Nginx Reverse Proxy + SSL HTTPS (`https://api.midora.id.vn/api/v1/health` OK)
+- [x] **Bước 6**: Kết nối Frontend Vercel (`NEXT_PUBLIC_API_URL`) & Kiểm thử toàn bộ hệ thống (`https://midora.id.vn` -> `https://api.midora.id.vn`)
 
 ---
 
@@ -51,26 +51,15 @@ Các file đã được chuẩn bị cho `midora-backend`:
 ### Bước 2: Tạo Database trên Amazon RDS (MySQL 8.0)
 
 1. Đăng nhập **AWS Console**, chọn Region gần Việt Nam nhất (ví dụ **Singapore — `ap-southeast-1`**). *Tất cả dịch vụ EC2 và RDS phải nằm cùng 1 Region.*
-2. **Tạo Security Group cho RDS**:
-   - Vào **VPC** -> **Security Groups** -> **Create security group**.
-   - Name: `midora-rds-sg`, giữ nguyên VPC mặc định.
-   - Tạm thời để trống Inbound rules (ta sẽ mở port `3306` cho EC2 ở Bước 3).
-3. **Tạo RDS MySQL**:
-   - Vào **RDS** -> **Databases** -> **Create database**.
-   - Creation method: **Standard create**.
-   - Engine type: **MySQL** (chọn phiên bản **8.0.x**).
-   - Templates: **Free tier** *(nếu tài khoản còn Free Tier; hoặc chọn Dev/Test với `db.t3.micro`/`db.t4g.micro`)*.
-   - Settings:
-     - DB instance identifier: `midora-mysql`
-     - Master username: `admin` (hoặc tên bạn muốn)
-     - Master password: đặt mật khẩu mạnh (lưu lại cẩn thận, **tránh ký tự đặc biệt dễ lỗi URL** như `@`, `/`, `?`, `#`).
-   - Connectivity:
-     - Public access: **No** (bảo mật tốt nhất vì chỉ EC2 trong cùng VPC được kết nối).
-     - VPC security group: Chọn **Choose existing** -> chọn `midora-rds-sg`.
-   - Additional configuration:
-     - **Initial database name**: `midora_db` *(rất quan trọng — khớp với JDBC URL mặc định)*.
-   - Nhấn **Create database** (đợi 5–10 phút đến khi Status là **Available**).
-4. Vào chi tiết `midora-mysql` -> tab **Connectivity & security** -> copy **Endpoint** (dạng `midora-mysql.xxxx.ap-southeast-1.rds.amazonaws.com`).
+1. **Tạo RDS MySQL (Easy create — nhanh nhất cho người mới)**:
+   - Vào **RDS** -> **Databases** -> **Create database** (cùng Region với EC2).
+   - Engine type: **MySQL**, Creation method: **Easy create**, DB instance size: **Free tier (`db.t4g.micro`)**.
+   - DB instance identifier: `midora-mysql`, Master username: `admin`, Credentials management: **Self managed** (tạo password mạnh).
+   - Set up EC2 connection: chọn **`Don't connect to an EC2 compute resource`** (sẽ nối ngay sau khi tạo EC2 xong).
+   - Bấm **Create database** và đợi Status thành **Available**.
+2. **Nối quyền EC2 <-> RDS** (sau khi có EC2 ở Bước 3):
+   - Vào **RDS -> Databases -> tick `midora-mysql` -> Actions -> Set up EC2 connection** -> chọn EC2 instance của bạn -> xác nhận. AWS tự cấu hình Security Group mở đúng port `3306` giữa EC2 và RDS.
+3. Vào chi tiết `midora-mysql` -> tab **Connectivity & security** -> copy **Endpoint** (dạng `midora-mysql.xxxx.<region>.rds.amazonaws.com`).
 
 ---
 
@@ -144,27 +133,22 @@ Các file đã được chuẩn bị cho `midora-backend`:
    openssl rand -hex 32   # Copy chuỗi ngẫu nhiên này làm JWT_SECRET
    nano .env
    ```
-   Điền đầy đủ giá trị thực tế:
+   Điền đầy đủ giá trị thực tế (nhớ xóa toàn bộ dấu `< >` và giữ `createDatabaseIfNotExist=true` để tự tạo `midora_db` khi dùng Easy create):
    ```env
    SPRING_PROFILES_ACTIVE=prod
-   SPRING_DATASOURCE_URL=jdbc:mysql://<RDS_ENDPOINT>:3306/midora_db?useSSL=true&serverTimezone=UTC
+   SPRING_DATASOURCE_URL=jdbc:mysql://<RDS_ENDPOINT>:3306/midora_db?createDatabaseIfNotExist=true&useSSL=true&serverTimezone=UTC
    SPRING_DATASOURCE_USERNAME=admin
    SPRING_DATASOURCE_PASSWORD=<MAT_KHAU_RDS>
    JWT_SECRET=<CHUOI_64_KY_TU_VUA_TAO>
-   CORS_ALLOWED_ORIGINS=https://<DOMAIN_FRONTEND>,http://localhost:3000
+   CORS_ALLOWED_ORIGINS=https://midora.id.vn,https://www.midora.id.vn,http://localhost:3000
    ```
-   *(Lưu trong `nano`: `Ctrl + O` -> `Enter` -> `Ctrl + X`)*
+   *(Lưu trong `nano`: `Ctrl + O` -> `Enter` -> `Ctrl + X`. Lưu ý: nếu sau này sửa `.env`, phải chạy `docker rm -f midora-backend` rồi `docker run` lại chứ `docker restart` không nạp lại `.env` mới).*
 
 3. **Build Docker Image & Chạy Container**:
    ```bash
    docker build -t midora-backend:latest .
 
-   docker run -d \
-     --name midora-backend \
-     --restart unless-stopped \
-     --env-file .env \
-     -p 127.0.0.1:8080:8080 \
-     midora-backend:latest
+   docker run -d --name midora-backend --restart unless-stopped --env-file .env -p 127.0.0.1:8080:8080 midora-backend:latest
    ```
    *(Lưu ý `-p 127.0.0.1:8080:8080`: chỉ lắng nghe nội bộ để Nginx gọi vào, không lộ port 8080 ra internet).*
 
@@ -231,29 +215,70 @@ Các file đã được chuẩn bị cho `midora-backend`:
 
 ---
 
-### Bước 6: Kết nối Frontend & Quy trình cập nhật code về sau
+### Bước 6: Kết nối Frontend trên Vercel & Quy trình cập nhật code về sau
 
-1. **Cấu hình Frontend (`midora-frontend`)**:
-   - Đặt biến môi trường trên nền tảng deploy frontend (hoặc `.env.production`):
-     ```env
-     NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api/v1
-     ```
-   - Đảm bảo URL frontend khớp chính xác trong `CORS_ALLOWED_ORIGINS` của file `.env` trên EC2.
+1. **Cấu hình Frontend (`midora-frontend` trên Vercel)**:
+   - Vào **Vercel Dashboard -> Project `midora-frontend` -> Settings -> Environment Variables**.
+   - Thêm biến mới (áp dụng cho **Production** và **Preview** nếu muốn):
+     - **Key**: `NEXT_PUBLIC_API_URL`
+     - **Value**: `https://api.midora.id.vn/api/v1`
+   - **Quan trọng**: Vào tab **Deployments** -> chọn bản deploy mới nhất -> bấm **`...` -> Redeploy** *(vì biến `NEXT_PUBLIC_*` của Next.js được đóng gói lúc build, không tự cập nhật nếu không Redeploy)*.
+   - Đảm bảo domain frontend (`https://midora.id.vn`) nằm trong `CORS_ALLOWED_ORIGINS` của file `.env` trên EC2.
 
 2. **Khi bạn sửa code backend và muốn deploy lại lên EC2**:
    ```bash
-   cd ~/midora
+   cd ~/Midora
    git pull origin main
    cd midora-backend
    docker build -t midora-backend:latest .
-   docker stop midora-backend && docker rm midora-backend
+   docker rm -f midora-backend
    docker run -d --name midora-backend --restart unless-stopped --env-file .env -p 127.0.0.1:8080:8080 midora-backend:latest
    docker image prune -f
    ```
 
 ---
 
-## 4. Xử lý các lỗi thường gặp (Troubleshooting)
+## 4. Quy trình chuẩn khi cập nhật tính năng mới (Database -> Backend -> Frontend)
+
+Mỗi khi bạn làm tính năng mới có sửa cả Database, Backend và Frontend, luôn triển khai theo thứ tự **Database Migration -> Backend -> Frontend** để Frontend không bao giờ gọi vào API/cột DB chưa tồn tại.
+
+### 4.1. Cập nhật Database (Flyway Migration)
+- **Tuyệt đối không sửa file cũ** (`V1__init_schema.sql`), vì Flyway lưu checksum và sẽ báo lỗi `FlywayValidateException` nếu file cũ bị thay đổi.
+- Tạo file mới tăng version trong `midora-backend/src/main/resources/db/migration/` (ví dụ `V2__add_products_seed.sql`, `V3__add_orders_column.sql`).
+- Nếu thay đổi lớn (xóa/sửa bảng đang có dữ liệu thật), vào **AWS Console -> RDS -> `midora-mysql` -> Actions -> Take snapshot** trước khi deploy để có bản sao lưu an toàn.
+- Khi Backend mới khởi động ở bước dưới, **Flyway tự chạy** file `V2__...sql` lên Amazon RDS rồi Hibernate mới kiểm tra (`ddl-auto=validate`).
+
+### 4.2. Cập nhật Backend (`midora-backend` lên AWS EC2)
+1. Commit & push code backend mới lên GitHub (nhánh đang theo dõi trên EC2).
+2. **Cách nhanh (1-click trên Windows — không cần mở SSH thủ công)**:
+   - Chạy file [deploy-backend.bat](../midora-backend/deploy-backend.bat) (`midora-backend/deploy-backend.bat`).
+   - Lần đầu chạy, script hỏi đường dẫn file `.pem` (bạn chỉ cần kéo thả file `.pem` vào cửa sổ và Enter — đường dẫn được lưu vào `.deploy.local.bat` đã gitignore).
+   - Script tự động: kiểm tra `./mvnw test-compile` -> gửi `deploy-ec2.sh` qua SSH để pull code, build Docker, khởi động lại container -> kiểm tra `https://api.midora.id.vn/api/v1/health`.
+3. **Cách thủ công trên EC2** (nếu cần debug trực tiếp):
+   ```bash
+   cd ~/Midora
+   git pull origin main
+   cd midora-backend
+   docker build -t midora-backend:latest .
+   docker rm -f midora-backend
+   docker run -d --name midora-backend --restart unless-stopped --env-file .env -p 127.0.0.1:8080:8080 midora-backend:latest
+   docker image prune -f
+   docker logs -f midora-backend
+   ```
+
+### 4.3. Cập nhật Frontend (`midora-frontend` lên Vercel)
+1. Trên máy cá nhân, kiểm tra TypeScript & ESLint:
+   ```powershell
+   cd midora-frontend
+   npx tsc --noEmit
+   npm run lint
+   ```
+2. Commit & push lên nhánh `main` -> **Vercel tự động build và deploy** lên `https://midora.id.vn` (không cần vào EC2).
+3. Chỉ khi có thêm biến `NEXT_PUBLIC_*` mới, mới vào **Vercel -> Settings -> Environment Variables** thêm rồi bấm **Redeploy**.
+
+---
+
+## 5. Xử lý các lỗi thường gặp (Troubleshooting)
 
 | Triệu chứng | Nguyên nhân phổ biến | Cách kiểm tra & khắc phục |
 | :--- | :--- | :--- |

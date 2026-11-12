@@ -36,5 +36,6 @@ build/
 .env
 .env.*
 !.env.example
+.deploy.local.bat
 *.pem
 *.key

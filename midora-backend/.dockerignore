@@ -11,4 +11,7 @@ target/
 mvnw
 mvnw.cmd
 HELP.md
+deploy-backend.bat
+deploy-ec2.sh
+.deploy.local.bat
 
