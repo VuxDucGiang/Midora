@@ -8,7 +8,6 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { Camera, RotateCw, Ruler } from "lucide-react";
 import {
   fetchAvatarManifest,
   tryLoadGlbAvatarRig,
@@ -24,52 +23,24 @@ import {
 } from "@/features/avatar/three/studioEnvironment";
 import type { ActiveBodyMetric, AvatarDraft } from "@/types/bodyProfile";
 
-type CameraPreset = "full" | "upper" | "angle45" | "back";
-
-interface CameraGoal {
-  position: THREE.Vector3;
-  target: THREE.Vector3;
-}
-
 interface Avatar3DCanvasProps {
   draft: AvatarDraft;
   activeMetric: ActiveBodyMetric;
 }
 
-const CAMERA_PRESETS: Array<{ id: CameraPreset; label: string }> = [
-  { id: "full", label: "Toàn thân" },
-  { id: "upper", label: "Thân trên" },
-  { id: "angle45", label: "Nghiêng 45°" },
-  { id: "back", label: "Mặt sau" },
-];
+const AUTO_ROTATE_RESUME_DELAY_MS = 5000;
 
-function computeCameraGoal(preset: CameraPreset, heightCm: number): CameraGoal {
+function computeDefaultCameraGoal(heightCm: number): {
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+} {
   const H = THREE.MathUtils.clamp(heightCm / 100, 1.2, 2.2);
   const scaleD = H / 1.63;
 
-  switch (preset) {
-    case "upper":
-      return {
-        position: new THREE.Vector3(0.14, H * 0.69, 2.05 * scaleD),
-        target: new THREE.Vector3(0, H * 0.61, 0),
-      };
-    case "angle45":
-      return {
-        position: new THREE.Vector3(2.4 * scaleD, H * 0.52, 2.4 * scaleD),
-        target: new THREE.Vector3(0, H * 0.46, 0),
-      };
-    case "back":
-      return {
-        position: new THREE.Vector3(-0.08, H * 0.50, -3.5 * scaleD),
-        target: new THREE.Vector3(0, H * 0.46, 0),
-      };
-    case "full":
-    default:
-      return {
-        position: new THREE.Vector3(0.06, H * 0.50, 3.55 * scaleD),
-        target: new THREE.Vector3(0, H * 0.46, 0),
-      };
-  }
+  return {
+    position: new THREE.Vector3(0.06, H * 0.5, 3.55 * scaleD),
+    target: new THREE.Vector3(0, H * 0.46, 0),
+  };
 }
 
 function createContactShadowTexture(): THREE.CanvasTexture {
@@ -101,19 +72,10 @@ export default function Avatar3DCanvas({
   const manifestRef = useRef<AvatarManifest | null>(null);
   const loadedModelUrlRef = useRef<string | null>(null);
   const loadSeqRef = useRef(0);
-  const controlsRef = useRef<OrbitControls | null>(null);
-  const transitionGoalRef = useRef<CameraGoal | null>(null);
-
-  const [cameraPreset, setCameraPreset] = useState<CameraPreset>("full");
-  const [autoRotate, setAutoRotate] = useState(false);
-  const [showAllRings, setShowAllRings] = useState(false);
-  const [presetsOpen, setPresetsOpen] = useState(false);
   const [webglError, setWebglError] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(false);
 
   const activeMetricRef = useRef<ActiveBodyMetric>(activeMetric);
-  const showAllRingsRef = useRef<boolean>(showAllRings);
-  const autoRotateRef = useRef<boolean>(autoRotate);
   const latestDraftRef = useRef<AvatarDraft>(draft);
 
   useEffect(() => {
@@ -123,17 +85,6 @@ export default function Avatar3DCanvas({
   useEffect(() => {
     activeMetricRef.current = activeMetric;
   }, [activeMetric]);
-
-  useEffect(() => {
-    showAllRingsRef.current = showAllRings;
-  }, [showAllRings]);
-
-  useEffect(() => {
-    autoRotateRef.current = autoRotate;
-    if (controlsRef.current) {
-      controlsRef.current.autoRotate = autoRotate;
-    }
-  }, [autoRotate]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -174,8 +125,7 @@ export default function Avatar3DCanvas({
     scene.fog = new THREE.Fog("#F4EFEA", 5.5, 11.5);
 
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 25);
-    const initialGoal = computeCameraGoal(
-      "full",
+    const initialGoal = computeDefaultCameraGoal(
       latestDraftRef.current.heightCm
     );
     camera.position.copy(initialGoal.position);
@@ -367,7 +317,7 @@ export default function Avatar3DCanvas({
     composer.addPass(smaaPass);
     composer.addPass(outputPass);
 
-    // Orbit Controls
+    // Orbit Controls with automatic 360° rotation and 5s pause after mouse interaction
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.copy(initialGoal.target);
     controls.enableDamping = true;
@@ -377,15 +327,53 @@ export default function Avatar3DCanvas({
     controls.maxDistance = 5.2;
     controls.minPolarAngle = Math.PI * 0.14;
     controls.maxPolarAngle = Math.PI * 0.51;
-    controls.autoRotate = autoRotateRef.current;
+    controls.autoRotate = true;
     controls.autoRotateSpeed = 1.0;
     controls.update();
 
-    const stopTransitionOnUserDrag = () => {
-      transitionGoalRef.current = null;
+    let resumeRotateTimer: ReturnType<typeof setTimeout> | null = null;
+    let isUserInteracting = false;
+
+    const clearResumeTimer = () => {
+      if (resumeRotateTimer !== null) {
+        clearTimeout(resumeRotateTimer);
+        resumeRotateTimer = null;
+      }
     };
-    controls.addEventListener("start", stopTransitionOnUserDrag);
-    controlsRef.current = controls;
+
+    const scheduleAutoRotateResume = () => {
+      clearResumeTimer();
+      resumeRotateTimer = setTimeout(() => {
+        resumeRotateTimer = null;
+        if (!isUserInteracting) {
+          controls.autoRotate = true;
+        }
+      }, AUTO_ROTATE_RESUME_DELAY_MS);
+    };
+
+    const handleControlsStart = () => {
+      isUserInteracting = true;
+      controls.autoRotate = false;
+      clearResumeTimer();
+    };
+
+    const handleControlsEnd = () => {
+      isUserInteracting = false;
+      scheduleAutoRotateResume();
+    };
+
+    const handleWheelInteraction = () => {
+      controls.autoRotate = false;
+      if (!isUserInteracting) {
+        scheduleAutoRotateResume();
+      }
+    };
+
+    controls.addEventListener("start", handleControlsStart);
+    controls.addEventListener("end", handleControlsEnd);
+    renderer.domElement.addEventListener("wheel", handleWheelInteraction, {
+      passive: true,
+    });
 
     // Responsive ResizeObserver
     const resizeObserver = new ResizeObserver((entries) => {
@@ -407,25 +395,7 @@ export default function Avatar3DCanvas({
       timer.update();
       const elapsed = timer.getElapsed();
 
-      const goal = transitionGoalRef.current;
-      if (goal) {
-        camera.position.lerp(goal.position, 0.12);
-        controls.target.lerp(goal.target, 0.12);
-        if (
-          camera.position.distanceTo(goal.position) < 0.008 &&
-          controls.target.distanceTo(goal.target) < 0.008
-        ) {
-          camera.position.copy(goal.position);
-          controls.target.copy(goal.target);
-          transitionGoalRef.current = null;
-        }
-      }
-
-      rigRef.current?.animate(
-        elapsed,
-        activeMetricRef.current,
-        showAllRingsRef.current
-      );
+      rigRef.current?.animate(elapsed, activeMetricRef.current, false);
       controls.update();
       composer.render();
     });
@@ -433,12 +403,14 @@ export default function Avatar3DCanvas({
     return () => {
       loadAbort.abort();
       envLoadCancelled = true;
+      clearResumeTimer();
       renderer.setAnimationLoop(null);
       timer.dispose();
       resizeObserver.disconnect();
-      controls.removeEventListener("start", stopTransitionOnUserDrag);
+      controls.removeEventListener("start", handleControlsStart);
+      controls.removeEventListener("end", handleControlsEnd);
+      renderer.domElement.removeEventListener("wheel", handleWheelInteraction);
       controls.dispose();
-      controlsRef.current = null;
 
       rigRef.current?.dispose();
       rigRef.current = null;
@@ -521,12 +493,6 @@ export default function Avatar3DCanvas({
     };
   }, [genderStyle]);
 
-  const handleSelectPreset = (preset: CameraPreset) => {
-    setCameraPreset(preset);
-    transitionGoalRef.current = computeCameraGoal(preset, draft.heightCm);
-    setPresetsOpen(false);
-  };
-
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#F4EFEA]">
       {/* Subtle radial studio spotlight ambient backdrop behind canvas */}
@@ -548,79 +514,11 @@ export default function Avatar3DCanvas({
         </div>
       )}
 
-      {/* Top-Right Compact View Tools below Liquid Glass Navbar */}
-      <div className="pointer-events-none absolute right-3 top-[78px] sm:right-6 sm:top-[84px] z-20 flex flex-col items-end gap-2">
-        {isModelLoading && (
-          <div className="pointer-events-none inline-flex h-7 items-center gap-1.5 rounded-full liquid-glass-subtle px-3 font-mono text-[10px] uppercase tracking-wider text-[#57534E]">
-            Đang nạp Avatar 3D...
-          </div>
-        )}
-        <div className="pointer-events-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setShowAllRings((prev) => !prev)}
-            title="Hiện tất cả vòng thước đo 3D"
-            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 sm:px-3 font-mono text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
-              showAllRings
-                ? "bg-[#191817] text-[#FAF7F2] shadow-xs"
-                : "liquid-glass-subtle text-[#191817] hover:bg-white/80"
-            }`}
-          >
-            <Ruler className="h-3 w-3" />
-            <span className="hidden sm:inline">Thước đo</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setAutoRotate((prev) => !prev)}
-            title="Bật hoặc tắt tự động xoay 360°"
-            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 sm:px-3 font-mono text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
-              autoRotate
-                ? "bg-[#A25B26] text-[#FAF7F2] shadow-xs"
-                : "liquid-glass-subtle text-[#191817] hover:bg-white/80"
-            }`}
-          >
-            <RotateCw
-              className={`h-3 w-3 ${
-                autoRotate ? "animate-[spin_6s_linear_infinite]" : ""
-              }`}
-            />
-            <span className="hidden sm:inline">Xoay 360°</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPresetsOpen((prev) => !prev)}
-            title="Chọn nhanh góc camera"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full liquid-glass-subtle px-2.5 sm:px-3 font-mono text-[10px] uppercase tracking-wider text-[#191817] hover:bg-white/80 transition-all cursor-pointer"
-          >
-            <Camera className="h-3 w-3 text-[#A25B26]" />
-            <span className="hidden md:inline">
-              {CAMERA_PRESETS.find((p) => p.id === cameraPreset)?.label}
-            </span>
-          </button>
+      {isModelLoading && (
+        <div className="pointer-events-none absolute right-3 top-[78px] sm:right-6 sm:top-[84px] z-20 inline-flex h-7 items-center gap-1.5 rounded-full liquid-glass-subtle px-3 font-mono text-[10px] uppercase tracking-wider text-[#57534E]">
+          Đang nạp Avatar 3D...
         </div>
-
-        {/* Compact Expandable Camera Preset Menu */}
-        {presetsOpen && (
-          <div className="pointer-events-auto flex flex-col gap-1 rounded-2xl liquid-glass p-1.5 w-36">
-            {CAMERA_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => handleSelectPreset(preset.id)}
-                className={`rounded-xl px-3 py-1.5 text-left font-mono text-[10px] uppercase tracking-wider transition-colors cursor-pointer ${
-                  cameraPreset === preset.id
-                    ? "bg-[#191817] text-[#FAF7F2] font-semibold"
-                    : "text-[#57534E] hover:bg-white/60 hover:text-[#191817]"
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

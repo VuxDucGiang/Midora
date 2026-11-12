@@ -1,0 +1,14 @@
+target/
+.git/
+.mvn/
+.idea/
+.vscode/
+*.iml
+.env
+.env.*
+*.pem
+*.key
+mvnw
+mvnw.cmd
+HELP.md
+
